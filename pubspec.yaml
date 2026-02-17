@@ -1,0 +1,28 @@
+name: pdf_viewer_pro
+description: A full-featured PDF viewer for Flutter with annotations, bookmarks, DRM, search, thumbnails, auto-scroll, and dark mode support. Built on PDFium (pdfrx).
+version: 0.0.1
+homepage: https://github.com/KumarLakshmanan/pdf_viewer_pro
+repository: https://github.com/KumarLakshmanan/pdf_viewer_pro
+issue_tracker: https://github.com/KumarLakshmanan/pdf_viewer_pro/issues
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: ^4.7.2
+  get_storage: ^2.1.1
+  pdfrx: ^1.0.91
+  screen_protector: ^1.4.10
+  path_provider: ^2.1.5
+  http: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
