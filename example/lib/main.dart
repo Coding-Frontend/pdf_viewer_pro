@@ -296,7 +296,6 @@ class _HomePageState extends State<HomePage> {
 
   PdfViewerServiceConfig _buildServiceConfig() {
     return PdfViewerServiceConfig(
-      isLoggedIn: false,
       onMessage: (message, type) {
         final color = type == ViewerMessageType.error
             ? Colors.red

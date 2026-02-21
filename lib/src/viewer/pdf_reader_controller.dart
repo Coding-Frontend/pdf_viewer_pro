@@ -227,11 +227,11 @@ class PdfReaderController extends GetxController {
           _resolvedFilePath!.startsWith('https://');
 
       if (isUrl) {
-        if (serviceConfig.authToken != null &&
-            serviceConfig.authToken!.isNotEmpty) {
-          debugPrint('Downloading authenticated PDF...');
+        if (serviceConfig.httpHeaders != null &&
+            serviceConfig.httpHeaders!.isNotEmpty) {
+          debugPrint('Downloading PDF with custom headers...');
           final downloadedPath =
-              await _downloadAuthenticatedFile(_resolvedFilePath!);
+              await _downloadFileWithHeaders(_resolvedFilePath!);
           if (downloadedPath != null) {
             localFilePath.value = downloadedPath;
             debugPrint('Opening downloaded PDF from: $downloadedPath');
@@ -265,17 +265,12 @@ class PdfReaderController extends GetxController {
     }
   }
 
-  /// Download file from authenticated API endpoint with caching
-  Future<String?> _downloadAuthenticatedFile(String url) async {
+  /// Download file with custom HTTP headers and caching
+  Future<String?> _downloadFileWithHeaders(String url) async {
     try {
       loadingProgress.value = 0.0;
       downloadedBytes.value = 0;
       totalBytes.value = 0;
-
-      final token = serviceConfig.authToken;
-      if (token == null || token.isEmpty) {
-        throw Exception('Not authenticated. Please provide an auth token.');
-      }
 
       final fileIdMatch = RegExp(r'/files/(\d+)/').firstMatch(url);
       final fileId = fileIdMatch?.group(1) ??
@@ -303,7 +298,10 @@ class PdfReaderController extends GetxController {
       final client = http.Client();
       try {
         final request = http.Request('GET', Uri.parse(url));
-        request.headers['Authorization'] = 'Bearer $token';
+        // Apply custom headers from service config
+        if (serviceConfig.httpHeaders != null) {
+          request.headers.addAll(serviceConfig.httpHeaders!);
+        }
         request.headers['Accept'] = 'application/pdf';
 
         final streamedResponse = await client.send(request);
@@ -351,7 +349,7 @@ class PdfReaderController extends GetxController {
           loadingProgress.value = 1.0;
           return localPath;
         } else if (streamedResponse.statusCode == 401) {
-          throw Exception('Authentication required. Please login again.');
+          throw Exception('Authentication required. Please check your credentials.');
         } else if (streamedResponse.statusCode == 403) {
           throw Exception(
               'Access denied. You may not have purchased this book.');
@@ -440,8 +438,8 @@ class PdfReaderController extends GetxController {
 
   void _startReadingSession() {
     _sessionStartTime = DateTime.now();
-    if (serviceConfig.isLoggedIn && _bookIdForStorage > 0) {
-      serviceConfig.onSessionStart?.call(_bookIdForStorage);
+    if (_bookIdForStorage > 0 && serviceConfig.onSessionStart != null) {
+      serviceConfig.onSessionStart!(_bookIdForStorage);
     }
   }
 
@@ -460,8 +458,8 @@ class PdfReaderController extends GetxController {
     try {
       await saveProgress();
 
-      if (serviceConfig.isLoggedIn) {
-        await serviceConfig.onSessionEnd?.call(
+      if (serviceConfig.onSessionEnd != null) {
+        await serviceConfig.onSessionEnd!(
           validBookId,
           duration.inSeconds,
           currentPage.value,
@@ -480,8 +478,8 @@ class PdfReaderController extends GetxController {
       _storage.write('pdf_page_$_bookIdForStorage', currentPage.value);
       _storage.write('pdf_progress_$_bookIdForStorage', progress.value);
 
-      if (serviceConfig.isLoggedIn && _bookIdForStorage > 0) {
-        await serviceConfig.onSessionEnd?.call(
+      if (_bookIdForStorage > 0 && serviceConfig.onSessionEnd != null) {
+        await serviceConfig.onSessionEnd!(
           _bookIdForStorage,
           0,
           currentPage.value,
@@ -814,7 +812,7 @@ class PdfReaderController extends GetxController {
     }
 
     // Try loading from server via callback
-    if (serviceConfig.isLoggedIn && serviceConfig.onBookmarksLoad != null) {
+    if (serviceConfig.onBookmarksLoad != null) {
       try {
         final serverBookmarks =
             await serviceConfig.onBookmarksLoad!(_bookIdForStorage);
@@ -849,9 +847,7 @@ class PdfReaderController extends GetxController {
     _storage.write(
         'pdf_bookmarks_$_bookIdForStorage', bookmarkedPages.toList());
 
-    if (serviceConfig.isLoggedIn &&
-        _bookIdForStorage > 0 &&
-        serviceConfig.onBookmarksSync != null) {
+    if (_bookIdForStorage > 0 && serviceConfig.onBookmarksSync != null) {
       try {
         await serviceConfig.onBookmarksSync!(
             _bookIdForStorage, bookmarkedPages.toList());
@@ -869,9 +865,7 @@ class PdfReaderController extends GetxController {
     _storage.write(
         'pdf_bookmarks_$_bookIdForStorage', bookmarkedPages.toList());
 
-    if (serviceConfig.isLoggedIn &&
-        _bookIdForStorage > 0 &&
-        serviceConfig.onBookmarksSync != null) {
+    if (_bookIdForStorage > 0 && serviceConfig.onBookmarksSync != null) {
       try {
         await serviceConfig.onBookmarksSync!(
             _bookIdForStorage, bookmarkedPages.toList());
@@ -908,9 +902,7 @@ class PdfReaderController extends GetxController {
     bookmarkedPages.clear();
     _storage.remove('pdf_bookmarks_$_bookIdForStorage');
 
-    if (serviceConfig.isLoggedIn &&
-        _bookIdForStorage > 0 &&
-        serviceConfig.onBookmarksSync != null) {
+    if (_bookIdForStorage > 0 && serviceConfig.onBookmarksSync != null) {
       try {
         await serviceConfig.onBookmarksSync!(_bookIdForStorage, []);
       } catch (e) {
@@ -1260,8 +1252,7 @@ class PdfReaderController extends GetxController {
     }
 
     // Try to load from server via callback
-    if (serviceConfig.isLoggedIn &&
-        _bookIdForStorage > 0 &&
+    if (_bookIdForStorage > 0 &&
         serviceConfig.onAnnotationsLoad != null) {
       try {
         final serverAnnotations =
@@ -1322,8 +1313,7 @@ class PdfReaderController extends GetxController {
   }
 
   Future<void> _syncAnnotationsToServer() async {
-    if (!serviceConfig.isLoggedIn ||
-        _bookIdForStorage <= 0 ||
+    if (_bookIdForStorage <= 0 ||
         serviceConfig.onAnnotationsSync == null) return;
 
     try {

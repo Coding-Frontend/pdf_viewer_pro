@@ -35,9 +35,14 @@ typedef SessionEndCallback = Future<void> Function(
 ///
 /// All callbacks are optional. When not provided, the viewer works
 /// fully offline with local storage only.
+///
+/// Instead of built-in authentication, provide [httpHeaders] for
+/// authenticated file downloads and callbacks for data sync.
+/// The presence of a callback indicates the feature is enabled.
 class PdfViewerServiceConfig {
-  /// JWT or bearer token for authenticated file downloads.
-  final String? authToken;
+  /// Custom HTTP headers for file downloads (e.g. Authorization, API keys).
+  /// Example: `{'Authorization': 'Bearer your-token', 'X-Api-Key': 'key'}`
+  final Map<String, String>? httpHeaders;
 
   /// Called when bookmarks should be synced to the server.
   final BookmarksSyncCallback? onBookmarksSync;
@@ -60,11 +65,8 @@ class PdfViewerServiceConfig {
   /// Called to display a message to the user.
   final MessageCallback? onMessage;
 
-  /// Whether the user is logged in (enables server sync features).
-  final bool isLoggedIn;
-
   const PdfViewerServiceConfig({
-    this.authToken,
+    this.httpHeaders,
     this.onBookmarksSync,
     this.onAnnotationsSync,
     this.onBookmarksLoad,
@@ -72,7 +74,6 @@ class PdfViewerServiceConfig {
     this.onSessionStart,
     this.onSessionEnd,
     this.onMessage,
-    this.isLoggedIn = false,
   });
 
   /// A default config with no server sync (offline only).
