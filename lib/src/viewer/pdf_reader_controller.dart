@@ -1314,7 +1314,9 @@ class PdfReaderController extends GetxController {
 
   Future<void> _syncAnnotationsToServer() async {
     if (_bookIdForStorage <= 0 ||
-        serviceConfig.onAnnotationsSync == null) return;
+        serviceConfig.onAnnotationsSync == null) {
+      return;
+    }
 
     try {
       final annotationsList = <Map<String, dynamic>>[];

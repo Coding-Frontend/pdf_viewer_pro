@@ -29,7 +29,7 @@
 ///   ),
 /// );
 /// ```
-library pdf_viewer_pro;
+library;
 
 // Service configuration (abstraction layer for server sync)
 export 'src/service_config.dart';
