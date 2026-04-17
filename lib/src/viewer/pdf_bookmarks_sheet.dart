@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
 /// Bookmarks bottom sheet for PDF reader
-class PdfBookmarksSheet extends GetView<PdfReaderController> {
-  const PdfBookmarksSheet({super.key});
+class PdfBookmarksSheet extends StatelessWidget {
+  final PdfReaderController controller;
+  const PdfBookmarksSheet({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +64,7 @@ class PdfBookmarksSheet extends GetView<PdfReaderController> {
                           ),
                         IconButton(
                           icon: Icon(Icons.close, color: subtitleColor),
-                          onPressed: () => Get.back(),
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
                     ),
@@ -114,7 +115,7 @@ class PdfBookmarksSheet extends GetView<PdfReaderController> {
                             primaryColor: primaryColor,
                             onTap: () {
                               controller.goToPage(pageNum);
-                              Get.back();
+                              Navigator.of(context).pop();
                             },
                             onDelete: () => controller.toggleBookmark(pageNum),
                           );
@@ -132,8 +133,9 @@ class PdfBookmarksSheet extends GetView<PdfReaderController> {
     final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Clear All Bookmarks?', style: TextStyle(color: textColor)),
@@ -143,14 +145,14 @@ class PdfBookmarksSheet extends GetView<PdfReaderController> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: Text('Cancel',
                 style: TextStyle(color: textColor.withValues(alpha: 0.6))),
           ),
           TextButton(
             onPressed: () {
               controller.clearAllBookmarks();
-              Get.back();
+              Navigator.of(ctx).pop();
             },
             child: Text('Clear All', style: TextStyle(color: Colors.red[400])),
           ),
@@ -267,8 +269,9 @@ class _BookmarkTile extends StatelessWidget {
 }
 
 /// Table of Contents sheet for PDF reader
-class PdfTocSheet extends GetView<PdfReaderController> {
-  const PdfTocSheet({super.key});
+class PdfTocSheet extends StatelessWidget {
+  final PdfReaderController controller;
+  const PdfTocSheet({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +318,7 @@ class PdfTocSheet extends GetView<PdfReaderController> {
                     ),
                     IconButton(
                       icon: Icon(Icons.close, color: subtitleColor),
-                      onPressed: () => Get.back(),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
@@ -363,7 +366,7 @@ class PdfTocSheet extends GetView<PdfReaderController> {
                             onTap: () {
                               if (item.pageNumber != null) {
                                 controller.goToPage(item.pageNumber!);
-                                Get.back();
+                                Navigator.of(context).pop();
                               }
                             },
                           );

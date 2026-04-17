@@ -31,6 +31,10 @@
 /// ```
 library;
 
+// Core reactive system
+export 'src/core/reactive.dart';
+export 'src/core/storage.dart';
+
 // Service configuration (abstraction layer for server sync)
 export 'src/service_config.dart';
 

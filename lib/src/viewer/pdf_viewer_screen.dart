@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:screen_protector/screen_protector.dart';
 
+import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 import 'pdf_navigation_bars.dart';
 import 'pdf_settings_sheet.dart';
@@ -19,7 +19,7 @@ import '../feature_config.dart';
 
 /// Main PDF viewer screen using pdfrx (PDFium FFI)
 class PdfViewerScreen extends StatefulWidget {
-  final String filePath;
+  final String? filePath;
   final String? fileUrl;
   final String title;
   final bool enableDrm;
@@ -35,7 +35,7 @@ class PdfViewerScreen extends StatefulWidget {
 
   const PdfViewerScreen({
     super.key,
-    required this.filePath,
+    this.filePath,
     this.fileUrl,
     required this.title,
     this.enableDrm = false,
@@ -66,19 +66,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   }
 
   void _initController() {
-    _controller = Get.put(
-      PdfReaderController(
-        filePath: widget.filePath,
-        fileUrl: widget.fileUrl,
-        title: widget.title,
-        bookId: widget.bookId,
-        isSamplePreview: widget.isSamplePreview,
-        serviceConfig: widget.serviceConfig,
-        themeConfig: widget.themeConfig,
-        featureConfig: widget.featureConfig,
-        externalDarkMode: widget.externalDarkMode,
-      ),
+    _controller = PdfReaderController(
+      filePath: widget.filePath,
+      fileUrl: widget.fileUrl,
+      title: widget.title,
+      bookId: widget.bookId,
+      isSamplePreview: widget.isSamplePreview,
+      serviceConfig: widget.serviceConfig,
+      themeConfig: widget.themeConfig,
+      featureConfig: widget.featureConfig,
+      externalDarkMode: widget.externalDarkMode,
     );
+    _controller.initialize();
   }
 
   Future<void> _setupDrm() async {
@@ -99,7 +98,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _teardownDrm();
-    Get.delete<PdfReaderController>();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -108,6 +107,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     if (state == AppLifecycleState.paused) {
       _controller.saveProgress();
     }
+  }
+
+  void _pop() {
+    _controller.saveProgress();
+    widget.onClose?.call();
+    Navigator.of(context).pop();
   }
 
   @override
@@ -135,7 +140,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       return Scaffold(
         key: _scaffoldKey,
         backgroundColor: bgColor,
-        drawer: const PdfThumbnailsDrawer(),
+        drawer: PdfThumbnailsDrawer(controller: _controller),
         body: _controller.isLoading.value
             ? _buildLoadingState(isDark)
             : _controller.hasError.value
@@ -165,11 +170,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               // Top bar
                               if (showControls && !isSearchMode)
                                 PdfReaderTopBar(
-                                  onBack: () {
-                                    _controller.saveProgress();
-                                    widget.onClose?.call();
-                                    Get.back();
-                                  },
+                                  controller: _controller,
+                                  onBack: _pop,
                                   onOpenThumbnails: () =>
                                       _scaffoldKey.currentState?.openDrawer(),
                                   onOpenBookmarks: () => _showBookmarksSheet(),
@@ -233,6 +235,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                         left: 0,
                                         right: 0,
                                         child: PdfSearchOverlay(
+                                          controller: _controller,
                                           onClose: () =>
                                               _controller.exitSearchMode(),
                                         ),
@@ -243,6 +246,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                               // Bottom bar
                               if (showControls && !isSearchMode)
                                 PdfReaderBottomBar(
+                                  controller: _controller,
                                   onPrevPage: () =>
                                       _controller.goToPreviousPage(),
                                   onNextPage: () => _controller.goToNextPage(),
@@ -565,7 +569,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton(
-                  onPressed: () => Get.back(),
+                  onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Go Back'),
                 ),
                 const SizedBox(width: 16),
@@ -593,6 +597,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     // Use local file path from controller (after download if needed)
     final effectiveFilePath =
         _controller.localFilePath.value ?? widget.filePath;
+    if (effectiveFilePath == null || effectiveFilePath.isEmpty) {
+      return const Center(child: Text('No file path available'));
+    }
     debugPrint(
         'PdfViewer using path: $effectiveFilePath, scrollDirection: $scrollDirection');
 
@@ -812,18 +819,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   }
 
   void _showSettingsSheet() {
-    Get.bottomSheet(
-      const PdfSettingsSheet(),
+    showModalBottomSheet(
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      builder: (_) => PdfSettingsSheet(controller: _controller),
     );
   }
 
   void _showBookmarksSheet() {
-    Get.bottomSheet(
-      const PdfBookmarksSheet(),
+    showModalBottomSheet(
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      builder: (_) => PdfBookmarksSheet(controller: _controller),
     );
   }
 
@@ -922,8 +931,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textColor = isDark ? Colors.white : Colors.black87;
     final noteController = TextEditingController();
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Add Note', style: TextStyle(color: textColor)),
@@ -954,7 +962,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel', style: TextStyle(color: textColor)),
           ),
           ElevatedButton(
@@ -965,15 +973,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   'Selected text',
                   noteController.text,
                 );
-                Get.back();
-                Get.snackbar(
-                  'Note Added',
-                  'Your note has been saved',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor:
-                      isDark ? const Color(0xFF2a2a2a) : Colors.white,
-                  colorText: textColor,
-                );
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: const Text('Your note has been saved'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: isDark ? const Color(0xFF2a2a2a) : null,
+                ));
               }
             },
             child: const Text('Save'),
@@ -989,8 +994,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textColor = isDark ? Colors.white : Colors.black87;
     final textController = TextEditingController();
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Go to Page', style: TextStyle(color: textColor)),
@@ -1007,7 +1011,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel',
                 style: TextStyle(color: textColor.withValues(alpha: 0.6))),
           ),
@@ -1018,7 +1022,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   page >= 1 &&
                   page <= _controller.totalPages.value) {
                 _controller.goToPage(page);
-                Get.back();
+                Navigator.of(context).pop();
               }
             },
             child: Text('Go',
@@ -1037,8 +1041,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textController =
         TextEditingController(text: existingNote?.text ?? '');
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
@@ -1061,12 +1064,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             TextButton(
               onPressed: () {
                 _controller.removeNote(pageNum, existingNote.id);
-                Get.back();
+                Navigator.of(context).pop();
               },
               child: Text('Delete', style: TextStyle(color: Colors.red[400])),
             ),
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel',
                 style: TextStyle(color: textColor.withValues(alpha: 0.6))),
           ),
@@ -1088,7 +1091,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                   _controller.addNote(pageNum, note,
                       refWidth: refWidth, refHeight: refHeight);
                 }
-                Get.back();
+                Navigator.of(context).pop();
               }
             },
             child: Text('Save',
@@ -1133,12 +1136,11 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
   }
 
   void _initController() {
-    _controller = Get.put(
-      PdfReaderController(
-        filePath: widget.filePath,
-        title: widget.title,
-      ),
+    _controller = PdfReaderController(
+      filePath: widget.filePath,
+      title: widget.title,
     );
+    _controller.initialize();
   }
 
   Future<void> _setupDrm() async {
@@ -1159,7 +1161,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _teardownDrm();
-    Get.delete<PdfReaderController>();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -1183,7 +1185,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
       return Scaffold(
         key: _scaffoldKey,
         backgroundColor: bgColor,
-        drawer: const PdfThumbnailsDrawer(),
+        drawer: PdfThumbnailsDrawer(controller: _controller),
         body: _controller.isLoading.value
             ? _buildLoadingState(isDark)
             : _controller.hasError.value
@@ -1204,6 +1206,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                           left: 0,
                           right: 0,
                           child: PdfSearchOverlay(
+                            controller: _controller,
                             onClose: () => _controller.exitSearchMode(),
                           ),
                         ),
@@ -1213,10 +1216,11 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                           left: 0,
                           right: 0,
                           child: PdfReaderTopBar(
+                            controller: _controller,
                             onBack: () {
                               _controller.saveProgress();
                               widget.onClose?.call();
-                              Get.back();
+                              Navigator.of(context).pop();
                             },
                             onOpenThumbnails: () =>
                                 _scaffoldKey.currentState?.openDrawer(),
@@ -1230,6 +1234,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                           left: 0,
                           right: 0,
                           child: PdfReaderBottomBar(
+                            controller: _controller,
                             onPrevPage: () => _controller.goToPreviousPage(),
                             onNextPage: () => _controller.goToNextPage(),
                             onToggleScrollDirection: () =>
@@ -1404,7 +1409,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton(
-                    onPressed: () => Get.back(), child: const Text('Go Back')),
+                    onPressed: () => Navigator.of(context).pop(), child: const Text('Go Back')),
                 const SizedBox(width: 16),
                 ElevatedButton(
                     onPressed: () => _controller.loadPdf(),
@@ -1425,6 +1430,10 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     // Use local file path from controller (after download if needed)
     final effectiveFilePath =
         _controller.localFilePath.value ?? widget.filePath;
+
+    if (effectiveFilePath.isEmpty) {
+      return const Center(child: Text('No file path available'));
+    }
 
     return Container(
       color: bgColor,
@@ -1563,8 +1572,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textController =
         TextEditingController(text: existingNote?.text ?? '');
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
@@ -1587,12 +1595,12 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
             TextButton(
               onPressed: () {
                 _controller.removeNote(pageNum, existingNote.id);
-                Get.back();
+                Navigator.of(context).pop();
               },
               child: Text('Delete', style: TextStyle(color: Colors.red[400])),
             ),
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel',
                 style: TextStyle(color: textColor.withValues(alpha: 0.6))),
           ),
@@ -1614,7 +1622,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                   _controller.addNote(pageNum, note,
                       refWidth: refWidth, refHeight: refHeight);
                 }
-                Get.back();
+                Navigator.of(context).pop();
               }
             },
             child: Text('Save',
@@ -1669,13 +1677,21 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
   }
 
   void _showSettingsSheet() {
-    Get.bottomSheet(const PdfSettingsSheet(),
-        isScrollControlled: true, backgroundColor: Colors.transparent);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PdfSettingsSheet(controller: _controller),
+    );
   }
 
   void _showBookmarksSheet() {
-    Get.bottomSheet(const PdfBookmarksSheet(),
-        isScrollControlled: true, backgroundColor: Colors.transparent);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PdfBookmarksSheet(controller: _controller),
+    );
   }
 
   Widget _buildTextSelectionToolbar(
@@ -1773,8 +1789,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textColor = isDark ? Colors.white : Colors.black87;
     final noteController = TextEditingController();
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Add Note', style: TextStyle(color: textColor)),
@@ -1805,7 +1820,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel', style: TextStyle(color: textColor)),
           ),
           ElevatedButton(
@@ -1816,15 +1831,12 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                   'Selected text',
                   noteController.text,
                 );
-                Get.back();
-                Get.snackbar(
-                  'Note Added',
-                  'Your note has been saved',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor:
-                      isDark ? const Color(0xFF2a2a2a) : Colors.white,
-                  colorText: textColor,
-                );
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: const Text('Your note has been saved'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: isDark ? const Color(0xFF2a2a2a) : null,
+                ));
               }
             },
             child: const Text('Save'),
@@ -1840,8 +1852,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textColor = isDark ? Colors.white : Colors.black87;
     final textController = TextEditingController();
 
-    Get.dialog(
-      AlertDialog(
+    showDialog(context: context, builder: (ctx) => AlertDialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Go to Page', style: TextStyle(color: textColor)),
@@ -1858,7 +1869,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             child: Text('Cancel',
                 style: TextStyle(color: textColor.withValues(alpha: 0.6))),
           ),
@@ -1869,7 +1880,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                   page >= 1 &&
                   page <= _controller.totalPages.value) {
                 _controller.goToPage(page);
-                Get.back();
+                Navigator.of(context).pop();
               }
             },
             child: Text('Go',

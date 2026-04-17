@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 import 'pdf_bookmarks_sheet.dart';
 
 /// Settings bottom sheet for PDF reader
-class PdfSettingsSheet extends GetView<PdfReaderController> {
-  const PdfSettingsSheet({super.key});
+class PdfSettingsSheet extends StatelessWidget {
+  final PdfReaderController controller;
+  const PdfSettingsSheet({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +54,7 @@ class PdfSettingsSheet extends GetView<PdfReaderController> {
                     ),
                     IconButton(
                       icon: Icon(Icons.close, color: subtitleColor),
-                      onPressed: () => Get.back(),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
                 ),
@@ -158,7 +159,7 @@ class PdfSettingsSheet extends GetView<PdfReaderController> {
                                   ),
                                   onTap: () {
                                     controller.goToPage(page);
-                                    Get.back();
+                                    Navigator.of(context).pop();
                                   },
                                 )),
                       if (controller.bookmarkedPages.length > 5)
@@ -166,11 +167,12 @@ class PdfSettingsSheet extends GetView<PdfReaderController> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: TextButton(
                             onPressed: () {
-                              Get.back();
-                              Get.bottomSheet(
-                                const PdfBookmarksSheet(),
+                              Navigator.of(context).pop();
+                              showModalBottomSheet(
+                                context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
+                                builder: (_) => PdfBookmarksSheet(controller: controller),
                               );
                             },
                             child: Text(

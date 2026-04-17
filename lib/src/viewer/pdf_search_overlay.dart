@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
 /// Google Drive style search overlay for PDF viewer
 /// Shows a top search bar with results minimap on the right side
-class PdfSearchOverlay extends GetView<PdfReaderController> {
+class PdfSearchOverlay extends StatelessWidget {
+  final PdfReaderController controller;
   final VoidCallback onClose;
 
   const PdfSearchOverlay({
     super.key,
+    required this.controller,
     required this.onClose,
   });
 

@@ -57,7 +57,7 @@ PdfViewerScreen(
   bookId: 123,
   enableDrm: true,
   serviceConfig: PdfViewerServiceConfig(
-    authToken: 'your-jwt-token',
+    httpHeaders: {'Authorization': 'Bearer your-jwt-token'},
     onBookmarksSync: (bookId, bookmarks) async {
       // Sync bookmarks to your server
     },

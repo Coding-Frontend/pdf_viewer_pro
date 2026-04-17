@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'pdf_reader_controller.dart';
 
 /// Toolbar that appears when text is selected in PDF viewer
 class PdfTextSelectionToolbar extends StatelessWidget {
@@ -10,6 +8,7 @@ class PdfTextSelectionToolbar extends StatelessWidget {
   final VoidCallback onAddNote;
   final VoidCallback onDismiss;
   final Offset position;
+  final bool isDarkMode;
 
   const PdfTextSelectionToolbar({
     super.key,
@@ -19,11 +18,12 @@ class PdfTextSelectionToolbar extends StatelessWidget {
     required this.onAddNote,
     required this.onDismiss,
     required this.position,
+    this.isDarkMode = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Get.find<PdfReaderController>().isDarkMode.value;
+    final isDark = isDarkMode;
     final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final primaryColor = Theme.of(context).primaryColor;

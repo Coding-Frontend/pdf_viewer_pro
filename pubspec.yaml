@@ -12,8 +12,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  get: ^4.7.2
-  get_storage: ^2.1.1
   pdfrx: ^1.0.91
   screen_protector: ^1.4.10
   path_provider: ^2.1.5

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'annotation_models.dart';
 
 /// Annotation toolbar controller
-class AnnotationToolbarController extends GetxController {
+class AnnotationToolbarController extends PluginController {
   final isAnnotationMode = false.obs;
   final selectedTool = Rx<AnnotationType?>(null);
   final selectedPenColor = AnnotationColors.defaultPenColor.obs;

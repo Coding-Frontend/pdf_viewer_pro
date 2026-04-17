@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
+import '../core/reactive.dart';
+import '../core/storage.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,8 +15,8 @@ import '../feature_config.dart';
 import '../annotations/annotation_models.dart';
 import '../annotations/annotation_toolbar.dart';
 
-/// Controller for PDF Reader using GetX state management and pdfrx (PDFium FFI)
-class PdfReaderController extends GetxController {
+/// Controller for PDF Reader using pdfrx (PDFium FFI)
+class PdfReaderController extends PluginController {
   final String? filePath;
   final String? fileUrl;
   final String title;
@@ -45,7 +45,7 @@ class PdfReaderController extends GetxController {
     this.externalDarkMode,
   });
 
-  final GetStorage _storage = GetStorage();
+  late final PluginStorage _storage;
 
   // PDF Document
   PdfDocument? pdfDocument;
@@ -106,11 +106,12 @@ class PdfReaderController extends GetxController {
   DateTime? _sessionStartTime;
   Timer? _autoSaveTimer;
   Timer? _controlsHideTimer;
-  Worker? _themeListener;
+  VoidCallback? _themeListener;
 
   @override
   void onInit() {
     super.onInit();
+    _storage = serviceConfig.storage ?? PluginStorage.memory();
     _enableScreenProtector();
     _loadPreferences();
     _initializeReader();
@@ -130,7 +131,7 @@ class PdfReaderController extends GetxController {
     _controlsHideTimer?.cancel();
     _autoScrollTimer?.cancel();
     _autoScrollProgressTimer?.cancel();
-    _themeListener?.dispose();
+    _themeListener?.call();
     pdfDocument?.dispose();
     _disableScreenProtector();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -393,6 +394,30 @@ class PdfReaderController extends GetxController {
   void _updateProgress() {
     if (totalPages.value > 0) {
       progress.value = currentPage.value / totalPages.value;
+      // Sync progress to server if callback provided
+      _syncProgressToServer();
+    }
+  }
+
+  /// Debounced progress sync to avoid excessive API calls on rapid page changes
+  DateTime? _lastProgressSync;
+  void _syncProgressToServer() {
+    final now = DateTime.now();
+    if (_lastProgressSync != null &&
+        now.difference(_lastProgressSync!).inSeconds < 5) {
+      return; // Debounce: sync at most every 5 seconds
+    }
+    _lastProgressSync = now;
+    final callback = serviceConfig.onProgressSync;
+    if (callback != null && (bookId ?? 0) > 0 && totalPages.value > 0) {
+      callback(
+        bookId!,
+        progress.value * 100,
+        currentPage.value,
+        totalPages.value,
+      ).catchError((e) {
+        debugPrint('Progress sync failed: $e');
+      });
     }
   }
 

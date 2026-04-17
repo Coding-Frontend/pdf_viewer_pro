@@ -8,8 +8,6 @@
       "version": "0.0.1",
       "dependencies": [
         "flutter",
-        "get",
-        "get_storage",
         "http",
         "path_provider",
         "pdfrx",
@@ -94,23 +92,6 @@
       ]
     },
     {
-      "name": "get_storage",
-      "version": "2.1.1",
-      "dependencies": [
-        "flutter",
-        "get",
-        "path_provider"
-      ]
-    },
-    {
-      "name": "get",
-      "version": "4.7.3",
-      "dependencies": [
-        "flutter",
-        "web"
-      ]
-    },
-    {
       "name": "flutter",
       "version": "0.0.0",
       "dependencies": [
@@ -136,7 +117,7 @@
     },
     {
       "name": "meta",
-      "version": "1.16.0",
+      "version": "1.17.0",
       "dependencies": []
     },
     {
@@ -187,7 +168,7 @@
     },
     {
       "name": "matcher",
-      "version": "0.12.17",
+      "version": "0.12.19",
       "dependencies": [
         "async",
         "meta",
@@ -198,7 +179,7 @@
     },
     {
       "name": "test_api",
-      "version": "0.7.6",
+      "version": "0.7.10",
       "dependencies": [
         "async",
         "boolean_selector",
@@ -265,6 +246,14 @@
       ]
     },
     {
+      "name": "path_provider_foundation",
+      "version": "2.5.1",
+      "dependencies": [
+        "flutter",
+        "path_provider_platform_interface"
+      ]
+    },
+    {
       "name": "path_provider_android",
       "version": "2.2.22",
       "dependencies": [
@@ -325,14 +314,14 @@
     },
     {
       "name": "material_color_utilities",
-      "version": "0.11.1",
+      "version": "0.13.0",
       "dependencies": [
         "collection"
       ]
     },
     {
       "name": "characters",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "dependencies": []
     },
     {
@@ -441,6 +430,16 @@
       ]
     },
     {
+      "name": "url_launcher_web",
+      "version": "2.4.1",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "url_launcher_platform_interface",
+        "web"
+      ]
+    },
+    {
       "name": "url_launcher_platform_interface",
       "version": "2.3.2",
       "dependencies": [
@@ -465,6 +464,14 @@
       ]
     },
     {
+      "name": "url_launcher_ios",
+      "version": "6.3.6",
+      "dependencies": [
+        "flutter",
+        "url_launcher_platform_interface"
+      ]
+    },
+    {
       "name": "url_launcher_android",
       "version": "6.3.28",
       "dependencies": [
@@ -478,36 +485,10 @@
       "dependencies": []
     },
     {
-      "name": "path_provider_foundation",
-      "version": "2.5.1",
-      "dependencies": [
-        "flutter",
-        "path_provider_platform_interface"
-      ]
-    },
-    {
-      "name": "url_launcher_web",
-      "version": "2.4.1",
-      "dependencies": [
-        "flutter",
-        "flutter_web_plugins",
-        "url_launcher_platform_interface",
-        "web"
-      ]
-    },
-    {
       "name": "flutter_web_plugins",
       "version": "0.0.0",
       "dependencies": [
         "flutter"
-      ]
-    },
-    {
-      "name": "url_launcher_ios",
-      "version": "6.3.6",
-      "dependencies": [
-        "flutter",
-        "url_launcher_platform_interface"
       ]
     }
   ],

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Rx, RxBool, RxInt, RxDouble, RxString, RxList, RxMap, Obx, Worker;
 import 'package:get_storage/get_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdf_viewer_pro/pdf_viewer_pro.dart';
@@ -42,7 +42,7 @@ class _HomePageState extends State<HomePage> {
   // Theme configuration
   Color _primaryColor = Colors.blue;
   bool _useDarkMode = false;
-  final _darkMode = false.obs;
+  final _darkMode = RxBool(false);
 
   // Feature toggles
   bool _enableBookmarks = true;

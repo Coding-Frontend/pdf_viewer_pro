@@ -1,3 +1,5 @@
+import 'core/storage.dart';
+
 /// Message types for viewer notifications
 enum ViewerMessageType {
   success,
@@ -31,6 +33,10 @@ typedef SessionStartCallback = Future<void> Function(int bookId);
 typedef SessionEndCallback = Future<void> Function(
     int bookId, int durationSeconds, int lastPage, int totalPages);
 
+/// Callback for syncing reading progress to server
+typedef ProgressSyncCallback = Future<void> Function(
+    int bookId, double progressPercent, int currentPage, int totalPages);
+
 /// Configuration for optional server-side services.
 ///
 /// All callbacks are optional. When not provided, the viewer works
@@ -62,8 +68,16 @@ class PdfViewerServiceConfig {
   /// Called when a reading session ends.
   final SessionEndCallback? onSessionEnd;
 
+  /// Called to sync reading progress to the server.
+  final ProgressSyncCallback? onProgressSync;
+
   /// Called to display a message to the user.
   final MessageCallback? onMessage;
+
+  /// Local key-value storage for persisting preferences and reading progress.
+  /// When not provided, an in-memory store is used (data lost on close).
+  /// Provide a [PluginStorage] backed by shared_preferences, Hive, or similar.
+  final PluginStorage? storage;
 
   const PdfViewerServiceConfig({
     this.httpHeaders,
@@ -73,7 +87,9 @@ class PdfViewerServiceConfig {
     this.onAnnotationsLoad,
     this.onSessionStart,
     this.onSessionEnd,
+    this.onProgressSync,
     this.onMessage,
+    this.storage,
   });
 
   /// A default config with no server sync (offline only).

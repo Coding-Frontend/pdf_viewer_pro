@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
 /// Top navigation bar for PDF reader
-class PdfReaderTopBar extends GetView<PdfReaderController> {
+class PdfReaderTopBar extends StatelessWidget {
+  final PdfReaderController controller;
   final VoidCallback onBack;
   final VoidCallback onOpenThumbnails;
   final VoidCallback onOpenBookmarks;
@@ -12,6 +13,7 @@ class PdfReaderTopBar extends GetView<PdfReaderController> {
 
   const PdfReaderTopBar({
     super.key,
+    required this.controller,
     required this.onBack,
     required this.onOpenThumbnails,
     required this.onOpenBookmarks,
@@ -95,7 +97,8 @@ class PdfReaderTopBar extends GetView<PdfReaderController> {
 }
 
 /// Bottom navigation bar for PDF reader
-class PdfReaderBottomBar extends GetView<PdfReaderController> {
+class PdfReaderBottomBar extends StatelessWidget {
+  final PdfReaderController controller;
   final VoidCallback onPrevPage;
   final VoidCallback onNextPage;
   final VoidCallback onToggleScrollDirection;
@@ -103,6 +106,7 @@ class PdfReaderBottomBar extends GetView<PdfReaderController> {
 
   const PdfReaderBottomBar({
     super.key,
+    required this.controller,
     required this.onPrevPage,
     required this.onNextPage,
     required this.onToggleScrollDirection,
@@ -276,8 +280,9 @@ class PdfReaderBottomBar extends GetView<PdfReaderController> {
 }
 
 /// Page slider for quick navigation
-class PdfPageSlider extends GetView<PdfReaderController> {
-  const PdfPageSlider({super.key});
+class PdfPageSlider extends StatelessWidget {
+  final PdfReaderController controller;
+  const PdfPageSlider({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {

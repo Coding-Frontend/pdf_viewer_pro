@@ -1,12 +1,13 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import '../core/reactive.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'pdf_reader_controller.dart';
 
 /// Page thumbnails drawer for PDF reader
-class PdfThumbnailsDrawer extends GetView<PdfReaderController> {
-  const PdfThumbnailsDrawer({super.key});
+class PdfThumbnailsDrawer extends StatelessWidget {
+  final PdfReaderController controller;
+  const PdfThumbnailsDrawer({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
