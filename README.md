@@ -1,5 +1,9 @@
 # pdf_viewer_pro
 
+[![pub.dev](https://img.shields.io/pub/v/pdf_viewer_pro.svg)](https://pub.dev/packages/pdf_viewer_pro)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Publisher](https://img.shields.io/badge/publisher-codingfrontend.in-blue)](https://pub.dev/publishers/codingfrontend.in)
+
 A full-featured PDF viewer for Flutter with annotations, bookmarks, DRM protection, search, thumbnails, auto-scroll, and dark/light theme support. Built on PDFium via [pdfrx](https://pub.dev/packages/pdfrx).
 
 ## Features
