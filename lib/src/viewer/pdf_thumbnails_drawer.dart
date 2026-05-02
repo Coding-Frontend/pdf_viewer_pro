@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'pdf_reader_controller.dart';
@@ -26,7 +27,7 @@ class PdfThumbnailsDrawer extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Icon(Icons.grid_view, color: textColor),
+                    Icon(ViewerIcons.gridView, color: textColor),
                     const SizedBox(width: 12),
                     Text(
                       'Pages',
@@ -265,7 +266,7 @@ class _ThumbnailItemState extends State<_ThumbnailItem> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.description_outlined,
+              ViewerIcons.description,
               size: 32,
               color: textColor.withValues(alpha: 0.4),
             ),

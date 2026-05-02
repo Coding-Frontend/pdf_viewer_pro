@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 
 /// Toolbar that appears when text is selected in PDF viewer
 class PdfTextSelectionToolbar extends StatelessWidget {
@@ -50,7 +51,7 @@ class PdfTextSelectionToolbar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _ToolButton(
-                icon: Icons.highlight,
+                icon: ViewerIcons.highlight,
                 label: 'Highlight',
                 onTap: onHighlight,
                 color: Colors.yellow.shade700,
@@ -58,7 +59,7 @@ class PdfTextSelectionToolbar extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               _ToolButton(
-                icon: Icons.note_add,
+                icon: ViewerIcons.note,
                 label: 'Note',
                 onTap: onAddNote,
                 color: primaryColor,
@@ -66,7 +67,7 @@ class PdfTextSelectionToolbar extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               IconButton(
-                icon: Icon(Icons.close, color: textColor, size: 20),
+                icon: Icon(ViewerIcons.close, color: textColor, size: 20),
                 onPressed: onDismiss,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(

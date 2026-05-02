@@ -1,9 +1,10 @@
 name: pdf_viewer_pro
 description: |
-  A full-featured Flutter PDF viewer built on PDFium (pdfrx). Includes annotations,
-  bookmarks, full-text search, thumbnails, table of contents, auto-scroll, dark/light
-  themes, DRM screenshot protection, and optional server-sync callbacks.
-version: 0.0.1
+  A full-featured Flutter PDF viewer for Android and iOS. Built on PDFium (pdfrx).
+  Includes annotations, bookmarks, full-text search, thumbnails, table of contents,
+  auto-scroll, dark/light themes, DRM screenshot protection, and optional
+  server-sync callbacks.
+version: 0.0.2
 homepage: https://codingfrontend.in
 repository: https://github.com/Coding-Frontend/pdf_viewer_pro
 issue_tracker: https://github.com/Coding-Frontend/pdf_viewer_pro/issues
@@ -14,6 +15,10 @@ topics:
   - drm
   - annotations
   - flutter
+
+platforms:
+  android:
+  ios:
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

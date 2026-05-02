@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
@@ -63,7 +64,7 @@ class PdfBookmarksSheet extends StatelessWidget {
                                 style: TextStyle(color: Colors.red[400])),
                           ),
                         IconButton(
-                          icon: Icon(Icons.close, color: subtitleColor),
+                          icon: Icon(ViewerIcons.close, color: subtitleColor),
                           onPressed: () => Navigator.of(context).pop(),
                         ),
                       ],
@@ -79,7 +80,7 @@ class PdfBookmarksSheet extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.bookmark_border,
+                              ViewerIcons.bookmarkOutline,
                               size: 64,
                               color: subtitleColor.withValues(alpha: 0.5),
                             ),
@@ -209,7 +210,7 @@ class _BookmarkTile extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.description_outlined,
+                    ViewerIcons.description,
                     size: 24,
                     color: subtitleColor,
                   ),
@@ -241,7 +242,7 @@ class _BookmarkTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.bookmark, size: 14, color: primaryColor),
+                      Icon(ViewerIcons.bookmark, size: 14, color: primaryColor),
                       const SizedBox(width: 4),
                       Text(
                         '$progress% through document',
@@ -257,7 +258,7 @@ class _BookmarkTile extends StatelessWidget {
             ),
             IconButton(
               icon:
-                  Icon(Icons.delete_outline, color: Colors.red[400], size: 20),
+                  Icon(ViewerIcons.delete, color: Colors.red[400], size: 20),
               onPressed: onDelete,
               tooltip: 'Remove bookmark',
             ),
@@ -317,7 +318,7 @@ class PdfTocSheet extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: subtitleColor),
+                      icon: Icon(ViewerIcons.close, color: subtitleColor),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],

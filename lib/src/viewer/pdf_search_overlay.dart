@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
@@ -45,7 +46,7 @@ class PdfSearchOverlay extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(Icons.arrow_back, color: textColor),
+                      icon: Icon(ViewerIcons.back, color: textColor),
                       onPressed: onClose,
                     ),
                     Expanded(
@@ -187,7 +188,7 @@ class _SearchTextFieldState extends State<_SearchTextField> {
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          prefixIcon: Icon(Icons.search, color: hintColor, size: 22),
+          prefixIcon: Icon(ViewerIcons.search, color: hintColor, size: 22),
           suffixIcon: _textController.text.isNotEmpty
               ? IconButton(
                   icon: Icon(Icons.clear, color: hintColor, size: 20),

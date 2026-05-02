@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 import 'pdf_bookmarks_sheet.dart';
@@ -53,7 +54,7 @@ class PdfSettingsSheet extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.close, color: subtitleColor),
+                      icon: Icon(ViewerIcons.close, color: subtitleColor),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -100,10 +101,10 @@ class PdfSettingsSheet extends StatelessWidget {
                       const SizedBox(height: 12),
                       _buildSectionHeader('Display', textColor),
                       _SettingsTile(
-                        icon: Icons.fullscreen,
+                        icon: ViewerIcons.fullscreen,
                         title: 'Fullscreen Mode',
                         subtitle: 'Hide system bars while reading',
-                        trailing: Switch(
+                        trailing: Switch.adaptive(
                           value: controller.isFullscreen.value,
                           onChanged: (value) => controller.toggleFullscreen(),
                           activeTrackColor: primaryColor,
@@ -111,10 +112,10 @@ class PdfSettingsSheet extends StatelessWidget {
                         isDarkMode: isDark,
                       ),
                       _SettingsTile(
-                        icon: Icons.screen_lock_portrait,
+                        icon: ViewerIcons.screenLock,
                         title: 'Keep Screen On',
                         subtitle: 'Prevent screen from sleeping',
-                        trailing: Switch(
+                        trailing: Switch.adaptive(
                           value: controller.keepScreenOn.value,
                           onChanged: (value) => controller.toggleKeepScreenOn(),
                           activeTrackColor: primaryColor,
@@ -131,7 +132,7 @@ class PdfSettingsSheet extends StatelessWidget {
                               horizontal: 20, vertical: 12),
                           child: Row(
                             children: [
-                              Icon(Icons.bookmark_border,
+                              Icon(ViewerIcons.bookmarkOutline,
                                   size: 20, color: subtitleColor),
                               const SizedBox(width: 12),
                               Text(
@@ -147,12 +148,12 @@ class PdfSettingsSheet extends StatelessWidget {
                             .take(5)
                             .map((page) => ListTile(
                                   dense: true,
-                                  leading: Icon(Icons.bookmark,
+                                  leading: Icon(ViewerIcons.bookmark,
                                       color: primaryColor, size: 20),
                                   title: Text('Page $page',
                                       style: TextStyle(color: textColor)),
                                   trailing: IconButton(
-                                    icon: Icon(Icons.delete_outline,
+                                    icon: Icon(ViewerIcons.delete,
                                         color: subtitleColor, size: 20),
                                     onPressed: () =>
                                         controller.removeBookmark(page),

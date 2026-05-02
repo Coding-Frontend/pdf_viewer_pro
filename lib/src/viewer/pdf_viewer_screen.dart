@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:screen_protector/screen_protector.dart';
@@ -275,7 +276,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 elevation: 4,
                                 icon: Icon(
                                   _controller.isAnnotationModeActive
-                                      ? Icons.check
+                                      ? ViewerIcons.check
                                       : Icons.edit,
                                   color: _controller.isAnnotationModeActive
                                       ? Colors.white
@@ -542,7 +543,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.error_outline,
+              ViewerIcons.error,
               size: 64,
               color: Colors.red[400],
             ),
@@ -662,7 +663,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Icon(
-                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          isBookmarked ? ViewerIcons.bookmark : ViewerIcons.bookmarkOutline,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -743,7 +744,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+                  Icon(ViewerIcons.error, size: 48, color: Colors.red[400]),
                   const SizedBox(height: 8),
                   Text(
                     'Error loading page',
@@ -806,10 +807,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       child: InkWell(
         onTap: () => _controller.toggleFullscreen(),
         borderRadius: BorderRadius.circular(8),
-        child: const Padding(
-          padding: EdgeInsets.all(8),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
           child: Icon(
-            Icons.fullscreen_exit,
+            ViewerIcons.fullscreenExit,
             color: Colors.white,
             size: 24,
           ),
@@ -879,7 +880,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.copy, color: primaryColor, size: 20),
+                        Icon(ViewerIcons.copy, color: primaryColor, size: 20),
                         const SizedBox(width: 4),
                         Text(
                           'Copy',
@@ -907,7 +908,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.note_add, color: primaryColor, size: 20),
+                        Icon(ViewerIcons.note, color: primaryColor, size: 20),
                         const SizedBox(width: 4),
                         Text(
                           'Note',
@@ -938,6 +939,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         content: TextField(
           controller: noteController,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           maxLines: 3,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
@@ -1002,6 +1004,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
           controller: textController,
           keyboardType: TextInputType.number,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
             hintText: 'Enter page number (1-${_controller.totalPages.value})',
@@ -1051,6 +1054,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         content: TextField(
           controller: textController,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           maxLines: 4,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
@@ -1260,7 +1264,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                             elevation: 4,
                             icon: Icon(
                               _controller.isAnnotationModeActive
-                                  ? Icons.check
+                                  ? ViewerIcons.check
                                   : Icons.edit,
                               color: _controller.isAnnotationModeActive
                                   ? Colors.white
@@ -1390,7 +1394,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+            Icon(ViewerIcons.error, size: 64, color: Colors.red[400]),
             const SizedBox(height: 16),
             Text(
               'Failed to load PDF',
@@ -1493,7 +1497,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Icon(
-                          isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                          isBookmarked ? ViewerIcons.bookmark : ViewerIcons.bookmarkOutline,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -1582,6 +1586,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         content: TextField(
           controller: textController,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           maxLines: 4,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
@@ -1668,9 +1673,9 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
       child: InkWell(
         onTap: () => _controller.toggleFullscreen(),
         borderRadius: BorderRadius.circular(8),
-        child: const Padding(
-          padding: EdgeInsets.all(8),
-          child: Icon(Icons.fullscreen_exit, color: Colors.white, size: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(ViewerIcons.fullscreenExit, color: Colors.white, size: 24),
         ),
       ),
     );
@@ -1737,7 +1742,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.copy, color: primaryColor, size: 20),
+                        Icon(ViewerIcons.copy, color: primaryColor, size: 20),
                         const SizedBox(width: 4),
                         Text(
                           'Copy',
@@ -1765,7 +1770,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.note_add, color: primaryColor, size: 20),
+                        Icon(ViewerIcons.note, color: primaryColor, size: 20),
                         const SizedBox(width: 4),
                         Text(
                           'Note',
@@ -1796,6 +1801,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         content: TextField(
           controller: noteController,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           maxLines: 3,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
@@ -1860,6 +1866,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
           controller: textController,
           keyboardType: TextInputType.number,
           autofocus: true,
+          keyboardAppearance: iosKeyboardBrightness(context),
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
             hintText: 'Enter page number (1-${_controller.totalPages.value})',

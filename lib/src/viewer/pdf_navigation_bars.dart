@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'pdf_reader_controller.dart';
 
@@ -48,7 +49,7 @@ class PdfReaderTopBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: textColor),
+                    icon: Icon(ViewerIcons.back, color: textColor),
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -64,18 +65,18 @@ class PdfReaderTopBar extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.grid_view, color: textColor),
+                    icon: Icon(ViewerIcons.gridView, color: textColor),
                     onPressed: onOpenThumbnails,
                     tooltip: 'Pages',
                   ),
                   if (onSearch != null)
                     IconButton(
-                      icon: Icon(Icons.search, color: textColor),
+                      icon: Icon(ViewerIcons.search, color: textColor),
                       onPressed: onSearch,
                       tooltip: 'Search',
                     ),
                   IconButton(
-                    icon: Icon(Icons.settings_outlined, color: textColor),
+                    icon: Icon(ViewerIcons.settings, color: textColor),
                     onPressed: onOpenSettings,
                     tooltip: 'Settings',
                   ),
@@ -234,7 +235,7 @@ class PdfReaderBottomBar extends StatelessWidget {
                   TextButton.icon(
                     onPressed: canGoPrev ? onPrevPage : null,
                     icon: Icon(
-                      Icons.chevron_left,
+                      ViewerIcons.chevronLeft,
                       color: canGoPrev ? accentColor : disabledColor,
                     ),
                     label: Text(
@@ -265,7 +266,7 @@ class PdfReaderBottomBar extends StatelessWidget {
                       ),
                     ),
                     label: Icon(
-                      Icons.chevron_right,
+                      ViewerIcons.chevronRight,
                       color: canGoNext ? accentColor : disabledColor,
                     ),
                   ),

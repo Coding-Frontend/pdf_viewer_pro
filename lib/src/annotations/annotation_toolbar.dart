@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import '../core/reactive.dart';
 import 'annotation_models.dart';
 
@@ -192,7 +193,7 @@ class AnnotationToolbar extends StatelessWidget {
                   // Undo/Redo/Clear buttons
                   IconButton(
                     icon: Icon(
-                      Icons.undo,
+                      ViewerIcons.undo,
                       color: canUndo
                           ? textColor
                           : (isDarkMode ? Colors.white38 : Colors.black26),
@@ -204,7 +205,7 @@ class AnnotationToolbar extends StatelessWidget {
                   ),
                   IconButton(
                     icon: Icon(
-                      Icons.redo,
+                      ViewerIcons.redo,
                       color: canRedo
                           ? textColor
                           : (isDarkMode ? Colors.white38 : Colors.black26),
@@ -216,7 +217,7 @@ class AnnotationToolbar extends StatelessWidget {
                   ),
                   IconButton(
                     icon:
-                        Icon(Icons.delete_outline, color: textColor, size: 22),
+                        Icon(ViewerIcons.delete, color: textColor, size: 22),
                     onPressed: onClear,
                     tooltip: 'Clear page',
                     visualDensity: VisualDensity.compact,
@@ -470,7 +471,7 @@ class _ColorPickerRow extends StatelessWidget {
                     ),
                     child: isSelected
                         ? Icon(
-                            Icons.check,
+                            ViewerIcons.check,
                             size: 16,
                             color: color.computeLuminance() > 0.5
                                 ? Colors.black

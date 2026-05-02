@@ -1,99 +1,155 @@
-# pdf_viewer_pro
+﻿# pdf_viewer_pro
 
 [![pub.dev](https://img.shields.io/pub/v/pdf_viewer_pro.svg)](https://pub.dev/packages/pdf_viewer_pro)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-android%20%7C%20ios-green)](https://pub.dev/packages/pdf_viewer_pro)
 [![Publisher](https://img.shields.io/badge/publisher-codingfrontend.in-blue)](https://pub.dev/publishers/codingfrontend.in)
 
-A full-featured PDF viewer for Flutter with annotations, bookmarks, DRM protection, search, thumbnails, auto-scroll, and dark/light theme support. Built on PDFium via [pdfrx](https://pub.dev/packages/pdfrx).
+A full-featured PDF viewer for Flutter **(Android & iOS)** with annotations, bookmarks, DRM protection, search, thumbnails, auto-scroll, and dark/light theme support. Built on PDFium via [pdfrx](https://pub.dev/packages/pdfrx).
+
+## Platform Support
+
+| Android | iOS |
+|:-------:|:---:|
+|    ✅    |  ✅  |
 
 ## Features
 
-- 📖 **High-performance PDF rendering** using PDFium FFI (pdfrx)
-- 🔒 **DRM protection** — screenshot prevention via screen_protector
-- 🔖 **Bookmarks** — add, remove, sync with server
-- 📝 **Annotations** — pen, highlighter, notes, eraser with undo/redo
+- 📄 **High-performance PDF rendering** using PDFium FFI (pdfrx)
+- 🔖 **Bookmarks** — add, remove, navigate, sync with server
+- ✏️ **Annotations** — pen drawing, highlighter, notes, eraser with undo/redo
+- 🔤 **Text Selection** — select and copy PDF text
 - 🔍 **Search** — full-text search with match highlighting
 - 🖼️ **Thumbnails** — page thumbnail grid drawer
-- 📑 **Table of Contents** — hierarchical TOC navigation
-- 🌙 **Dark/Light mode** support
-- ↕️ **Vertical/Horizontal** scroll modes
+- 📒 **Table of Contents** — hierarchical PDF outline navigation
+- 🌙 **Dark/Light** theme support
+- ↔️ **Scroll direction** — toggle vertical/horizontal scroll
 - ⏩ **Auto-scroll** with configurable interval
-- 📊 **Progress tracking** — page position persistence
-- 🔐 **Authenticated downloads** — token-based file access
-- 📤 **Server sync** — optional bookmark/annotation/session sync via callbacks
+- 📊 **Page slider** — bottom navigation bar with page preview
+- 🔒 **DRM protection** — screenshot/screen-recording prevention
+- ☀️ **Keep screen on** while reading
+- 📊 **Session tracking** — reading duration and page progress
+- 🔗 **Authenticated downloads** via custom HTTP headers
+- ☁️ **Server sync** via callbacks (bookmarks, annotations, sessions)
+- 💾 **Custom storage** — pluggable storage backend
+- 📤 **Share** — share PDF or content
+- 🪶 **SimplePdfViewer** — lightweight view-only widget for invoices/docs
 
 ## Getting Started
 
-Add to your `pubspec.yaml`:
-
 ```yaml
 dependencies:
-  pdf_viewer_pro: ^0.0.1
+  pdf_viewer_pro: ^0.0.2
 ```
 
-## Usage
-
-### Basic Usage
+## Basic Usage
 
 ```dart
 import 'package:pdf_viewer_pro/pdf_viewer_pro.dart';
 
-// From a local file
-PdfViewerScreen(
-  filePath: '/path/to/document.pdf',
-  title: 'My Document',
-);
+// Open from file path
+Navigator.push(context, MaterialPageRoute(
+  builder: (_) => PdfViewerScreen(
+    filePath: '/path/to/document.pdf',
+    title: 'My Document',
+  ),
+));
 
-// From a URL
-PdfViewerScreen(
-  filePath: '',
-  fileUrl: 'https://example.com/document.pdf',
-  title: 'My Document',
-);
+// Open from URL
+Navigator.push(context, MaterialPageRoute(
+  builder: (_) => PdfViewerScreen(
+    fileUrl: 'https://example.com/document.pdf',
+    title: 'My Document',
+  ),
+));
 ```
 
-### With Server Sync (Bookmarks, Reading Sessions)
+## Feature Configuration
 
 ```dart
 PdfViewerScreen(
   filePath: '/path/to/document.pdf',
-  title: 'My Book',
-  bookId: 123,
-  enableDrm: true,
-  serviceConfig: PdfViewerServiceConfig(
-    httpHeaders: {'Authorization': 'Bearer your-jwt-token'},
-    onBookmarksSync: (bookId, bookmarks) async {
-      // Sync bookmarks to your server
-    },
-    onAnnotationsSync: (bookId, annotations) async {
-      // Sync annotations to your server
-    },
-    onSessionStart: (bookId) async {
-      // Track reading session start
-    },
-    onSessionEnd: (bookId, duration, lastPage, totalPages) async {
-      // Track reading session end
-    },
-    onMessage: (message, type) {
-      // Show toast/snackbar
-    },
+  title: 'My Document',
+  bookId: 42,                       // For bookmarks/annotations persistence
+  featureConfig: PdfViewerFeatureConfig(
+    enableBookmarks: true,
+    enableAnnotations: true,
+    enableSearch: true,
+    enableTextSelection: true,
+    enableThumbnails: true,
+    enableTableOfContents: true,
+    enableAutoScroll: true,
+    enableDarkModeToggle: true,
+    enableFullscreen: true,
+    enablePageSlider: true,
+    enableScreenProtection: false,
+    enableKeepScreenOn: true,
+    enableSessionTracking: true,
+    enableScrollDirectionToggle: true,
+    enableSettings: true,
+    enableShare: true,
   ),
 );
 ```
 
-### Simple PDF Viewer (for invoices, receipts)
+## Built-in Presets
 
 ```dart
-// From file
-SimplePdfViewer.file('/path/to/invoice.pdf');
+// All features enabled
+featureConfig: PdfViewerFeatureConfig.fullFeatures
 
-// From bytes
-SimplePdfViewer.data(pdfBytes);
+// View-only (no annotations/bookmarks)
+featureConfig: PdfViewerFeatureConfig.readOnly
 
-// From URL
-SimplePdfViewer.uri(Uri.parse('https://example.com/doc.pdf'));
+// Bare minimum (page slider only)
+featureConfig: PdfViewerFeatureConfig.minimal
 ```
 
-## License
+## Simple View-Only Widget
 
-MIT License
+For invoices, receipts, and documents that only need viewing:
+
+```dart
+// From file path
+SimplePdfViewer.file('/path/to/invoice.pdf')
+
+// From bytes
+SimplePdfViewer.data(pdfBytes, sourceName: 'invoice.pdf')
+
+// From URL
+SimplePdfViewer.uri(Uri.parse('https://example.com/doc.pdf'))
+```
+
+## Theme Customization
+
+```dart
+themeConfig: PdfViewerThemeConfig(
+  primaryColor: Colors.blue,
+  lightBackgroundColor: Colors.white,
+  darkBackgroundColor: Color(0xFF121212),
+  cardBorderRadius: 12.0,
+),
+```
+
+## Server Sync
+
+```dart
+serviceConfig: PdfViewerServiceConfig(
+  // Sync bookmarks with your server
+  onBookmarksSync: (bookId, bookmarks) async {
+    await myApi.saveBookmarks(bookId, bookmarks);
+  },
+  onBookmarksLoad: (bookId) async {
+    return await myApi.loadBookmarks(bookId);
+  },
+  // Track reading sessions
+  onSessionStart: (bookId) async {
+    await myApi.startSession(bookId);
+  },
+  onSessionEnd: (bookId, durationSeconds, currentPage, totalPages) async {
+    await myApi.endSession(bookId, durationSeconds);
+  },
+  // Authenticated file access
+  httpHeaders: {'Authorization': 'Bearer $token'},
+),
+```

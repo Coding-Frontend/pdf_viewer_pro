@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 import 'annotation_models.dart';
 
 /// Custom painter for drawing annotations
@@ -432,6 +433,7 @@ class _NoteDialogState extends State<NoteDialog> {
         maxLines: 5,
         minLines: 3,
         autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
         decoration: const InputDecoration(
           hintText: 'Enter your note...',
           border: OutlineInputBorder(),
@@ -586,7 +588,7 @@ class _NoteMarkerWidgetState extends State<_NoteMarkerWidget> {
                 GestureDetector(
                   onTap: () => setState(() => _isExpanded = false),
                   child: Icon(
-                    Icons.close,
+                    ViewerIcons.close,
                     size: 14,
                     color: Colors.white.withValues(alpha: 0.6),
                   ),

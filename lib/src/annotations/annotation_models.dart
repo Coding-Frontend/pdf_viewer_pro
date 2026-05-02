@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/platform_utils.dart';
 
 /// Types of annotations supported
 enum AnnotationType {
@@ -25,9 +26,9 @@ enum AnnotationType {
       case AnnotationType.pen:
         return Icons.edit;
       case AnnotationType.highlighter:
-        return Icons.highlight;
+        return ViewerIcons.highlight;
       case AnnotationType.note:
-        return Icons.note_add;
+        return ViewerIcons.note;
       case AnnotationType.eraser:
         return Icons.auto_fix_normal;
     }
