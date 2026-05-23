@@ -106,6 +106,7 @@ class PdfBookmarksSheet extends StatelessWidget {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
+                        physics: iosScrollPhysics(),
                         itemCount: controller.bookmarkedPages.length,
                         itemBuilder: (context, index) {
                           final pageNum = controller.bookmarkedPages[index];
@@ -131,34 +132,30 @@ class PdfBookmarksSheet extends StatelessWidget {
   }
 
   void _showClearAllDialog(BuildContext context, bool isDark) {
-    final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
 
-    showDialog(
+    showViewerDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Clear All Bookmarks?', style: TextStyle(color: textColor)),
-        content: Text(
-          'This will remove all your bookmarked pages. This action cannot be undone.',
-          style: TextStyle(color: textColor.withValues(alpha: 0.7)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-          ),
-          TextButton(
-            onPressed: () {
-              controller.clearAllBookmarks();
-              Navigator.of(ctx).pop();
-            },
-            child: Text('Clear All', style: TextStyle(color: Colors.red[400])),
-          ),
-        ],
+      title: 'Clear All Bookmarks?',
+      backgroundColor: isDark ? const Color(0xFF2a2a2a) : Colors.white,
+      content: Text(
+        'This will remove all your bookmarked pages. This action cannot be undone.',
+        style: TextStyle(color: textColor.withValues(alpha: 0.7)),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
+        ),
+        TextButton(
+          onPressed: () {
+            controller.clearAllBookmarks();
+            Navigator.of(context).pop();
+          },
+          child: Text('Clear All', style: TextStyle(color: Colors.red[400])),
+        ),
+      ],
     );
   }
 }
@@ -358,6 +355,7 @@ class PdfTocSheet extends StatelessWidget {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
+                        physics: iosScrollPhysics(),
                         itemCount: controller.tableOfContents.length,
                         itemBuilder: (context, index) {
                           final item = controller.tableOfContents[index];

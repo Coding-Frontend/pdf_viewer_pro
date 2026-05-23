@@ -88,6 +88,40 @@ class ViewerIcons {
 
   static IconData get description =>
       Platform.isIOS ? CupertinoIcons.doc_text : Icons.description_outlined;
+
+  // Additional icons used across the PDF viewer
+  static IconData get checkCircle =>
+      Platform.isIOS ? CupertinoIcons.checkmark_circle_fill : Icons.check_circle;
+
+  static IconData get deleteSweep =>
+      Platform.isIOS ? CupertinoIcons.trash : Icons.delete_sweep;
+
+  static IconData get listAlt =>
+      Platform.isIOS ? CupertinoIcons.list_bullet : Icons.list_alt_outlined;
+
+  static IconData get editFilled =>
+      Platform.isIOS ? CupertinoIcons.pencil : Icons.edit;
+
+  static IconData get downloadFilled =>
+      Platform.isIOS ? CupertinoIcons.arrow_down_to_line : Icons.download_rounded;
+
+  static IconData get viewCarousel =>
+      Platform.isIOS ? CupertinoIcons.rectangle_stack : Icons.view_carousel_rounded;
+
+  static IconData get viewDay =>
+      Platform.isIOS ? CupertinoIcons.doc_text : Icons.view_day_rounded;
+
+  static IconData get arrowUp =>
+      Platform.isIOS ? CupertinoIcons.chevron_up : Icons.keyboard_arrow_up;
+
+  static IconData get arrowDown =>
+      Platform.isIOS ? CupertinoIcons.chevron_down : Icons.keyboard_arrow_down;
+
+  static IconData get searchOff =>
+      Platform.isIOS ? CupertinoIcons.xmark_circle : Icons.search_off;
+
+  static IconData get clearText =>
+      Platform.isIOS ? CupertinoIcons.clear_circled_solid : Icons.clear;
 }
 
 /// Returns the appropriate keyboard brightness for iOS.

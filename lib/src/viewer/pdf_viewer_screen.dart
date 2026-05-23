@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
 import 'package:flutter/services.dart';
@@ -127,16 +128,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       final isFullscreen = _controller.isFullscreen.value;
       final isSearchMode = _controller.isSearchMode.value;
 
-      SystemChrome.setSystemUIOverlayStyle(
-        SystemUiOverlayStyle(
-          statusBarColor: statusBarColor,
-          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-          systemNavigationBarColor: statusBarColor,
-          systemNavigationBarIconBrightness:
-              isDark ? Brightness.light : Brightness.dark,
-        ),
-      );
+      // Only apply Android status-bar styling; iOS manages it via Info.plist / NavigationBar
+      if (!Platform.isIOS) {
+        SystemChrome.setSystemUIOverlayStyle(
+          SystemUiOverlayStyle(
+            statusBarColor: statusBarColor,
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+            systemNavigationBarColor: statusBarColor,
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+          ),
+        );
+      }
 
       return Scaffold(
         key: _scaffoldKey,
@@ -823,6 +827,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => PdfSettingsSheet(controller: _controller),
     );
@@ -932,61 +937,56 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textColor = isDark ? Colors.white : Colors.black87;
     final noteController = TextEditingController();
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Add Note', style: TextStyle(color: textColor)),
-        content: TextField(
-          controller: noteController,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          maxLines: 3,
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter your note for the selected text...',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: 'Add Note',
+      content: TextField(
+        controller: noteController,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        maxLines: 3,
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter your note for the selected text...',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: isDark ? Colors.white24 : Colors.black12,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: isDark ? Colors.white24 : Colors.black12,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: Theme.of(context).primaryColor,
-              ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Theme.of(context).primaryColor,
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: textColor)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (noteController.text.isNotEmpty) {
-                _controller.addTextNote(
-                  _controller.currentPage.value,
-                  'Selected text',
-                  noteController.text,
-                );
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('Your note has been saved'),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: isDark ? const Color(0xFF2a2a2a) : null,
-                ));
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: textColor)),
+        ),
+        TextButton(
+          onPressed: () {
+            if (noteController.text.isNotEmpty) {
+              _controller.addTextNote(
+                _controller.currentPage.value,
+                'Selected text',
+                noteController.text,
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Save',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 
@@ -996,43 +996,42 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textColor = isDark ? Colors.white : Colors.black87;
     final textController = TextEditingController();
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Go to Page', style: TextStyle(color: textColor)),
-        content: TextField(
-          controller: textController,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter page number (1-${_controller.totalPages.value})',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: 'Go to Page',
+      content: TextField(
+        controller: textController,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter page number (1-\${_controller.totalPages.value})',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-          ),
-          TextButton(
-            onPressed: () {
-              final page = int.tryParse(textController.text);
-              if (page != null &&
-                  page >= 1 &&
-                  page <= _controller.totalPages.value) {
-                _controller.goToPage(page);
-                Navigator.of(context).pop();
-              }
-            },
-            child: Text('Go',
-                style: TextStyle(color: Theme.of(context).primaryColor)),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
+        ),
+        TextButton(
+          onPressed: () {
+            final page = int.tryParse(textController.text);
+            if (page != null &&
+                page >= 1 &&
+                page <= _controller.totalPages.value) {
+              _controller.goToPage(page);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Go',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 
@@ -1044,65 +1043,61 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final textController =
         TextEditingController(text: existingNote?.text ?? '');
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          existingNote != null ? 'Edit Note' : 'Add Note',
-          style: TextStyle(color: textColor),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: existingNote != null ? 'Edit Note' : 'Add Note',
+      content: TextField(
+        controller: textController,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        maxLines: 4,
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter your note...',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        content: TextField(
-          controller: textController,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          maxLines: 4,
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter your note...',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-        actions: [
-          if (existingNote != null)
-            TextButton(
-              onPressed: () {
-                _controller.removeNote(pageNum, existingNote.id);
-                Navigator.of(context).pop();
-              },
-              child: Text('Delete', style: TextStyle(color: Colors.red[400])),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-          ),
+      ),
+      actions: [
+        if (existingNote != null)
           TextButton(
             onPressed: () {
-              final text = textController.text.trim();
-              if (text.isNotEmpty) {
-                if (existingNote != null) {
-                  _controller.updateNote(
-                      pageNum, existingNote.copyWith(text: text));
-                } else {
-                  final note = TextNote(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    x: offset.dx,
-                    y: offset.dy,
-                    text: text,
-                    createdAt: DateTime.now(),
-                  );
-                  _controller.addNote(pageNum, note,
-                      refWidth: refWidth, refHeight: refHeight);
-                }
-                Navigator.of(context).pop();
-              }
+              _controller.removeNote(pageNum, existingNote.id);
+              Navigator.of(context).pop();
             },
-            child: Text('Save',
-                style: TextStyle(color: Theme.of(context).primaryColor)),
+            child: Text('Delete', style: TextStyle(color: Colors.red[400])),
           ),
-        ],
-      ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
+        ),
+        TextButton(
+          onPressed: () {
+            final text = textController.text.trim();
+            if (text.isNotEmpty) {
+              if (existingNote != null) {
+                _controller.updateNote(
+                    pageNum, existingNote.copyWith(text: text));
+              } else {
+                final note = TextNote(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  x: offset.dx,
+                  y: offset.dy,
+                  text: text,
+                  createdAt: DateTime.now(),
+                );
+                _controller.addNote(pageNum, note,
+                    refWidth: refWidth, refHeight: refHeight);
+              }
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Save',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 }
@@ -1576,65 +1571,61 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textController =
         TextEditingController(text: existingNote?.text ?? '');
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          existingNote != null ? 'Edit Note' : 'Add Note',
-          style: TextStyle(color: textColor),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: existingNote != null ? 'Edit Note' : 'Add Note',
+      content: TextField(
+        controller: textController,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        maxLines: 4,
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter your note...',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        content: TextField(
-          controller: textController,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          maxLines: 4,
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter your note...',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
-        actions: [
-          if (existingNote != null)
-            TextButton(
-              onPressed: () {
-                _controller.removeNote(pageNum, existingNote.id);
-                Navigator.of(context).pop();
-              },
-              child: Text('Delete', style: TextStyle(color: Colors.red[400])),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-          ),
+      ),
+      actions: [
+        if (existingNote != null)
           TextButton(
             onPressed: () {
-              final text = textController.text.trim();
-              if (text.isNotEmpty) {
-                if (existingNote != null) {
-                  _controller.updateNote(
-                      pageNum, existingNote.copyWith(text: text));
-                } else {
-                  final note = TextNote(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    x: offset.dx,
-                    y: offset.dy,
-                    text: text,
-                    createdAt: DateTime.now(),
-                  );
-                  _controller.addNote(pageNum, note,
-                      refWidth: refWidth, refHeight: refHeight);
-                }
-                Navigator.of(context).pop();
-              }
+              _controller.removeNote(pageNum, existingNote.id);
+              Navigator.of(context).pop();
             },
-            child: Text('Save',
-                style: TextStyle(color: Theme.of(context).primaryColor)),
+            child: Text('Delete', style: TextStyle(color: Colors.red[400])),
           ),
-        ],
-      ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
+        ),
+        TextButton(
+          onPressed: () {
+            final text = textController.text.trim();
+            if (text.isNotEmpty) {
+              if (existingNote != null) {
+                _controller.updateNote(
+                    pageNum, existingNote.copyWith(text: text));
+              } else {
+                final note = TextNote(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  x: offset.dx,
+                  y: offset.dy,
+                  text: text,
+                  createdAt: DateTime.now(),
+                );
+                _controller.addNote(pageNum, note,
+                    refWidth: refWidth, refHeight: refHeight);
+              }
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Save',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 
@@ -1685,6 +1676,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => PdfSettingsSheet(controller: _controller),
     );
@@ -1694,6 +1686,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => PdfBookmarksSheet(controller: _controller),
     );
@@ -1794,61 +1787,56 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textColor = isDark ? Colors.white : Colors.black87;
     final noteController = TextEditingController();
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Add Note', style: TextStyle(color: textColor)),
-        content: TextField(
-          controller: noteController,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          maxLines: 3,
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter your note for the selected text...',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: 'Add Note',
+      content: TextField(
+        controller: noteController,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        maxLines: 3,
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter your note for the selected text...',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: isDark ? Colors.white24 : Colors.black12,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: isDark ? Colors.white24 : Colors.black12,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: Theme.of(context).primaryColor,
-              ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(
+              color: Theme.of(context).primaryColor,
             ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: TextStyle(color: textColor)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (noteController.text.isNotEmpty) {
-                _controller.addTextNote(
-                  _controller.currentPage.value,
-                  'Selected text',
-                  noteController.text,
-                );
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: const Text('Your note has been saved'),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: isDark ? const Color(0xFF2a2a2a) : null,
-                ));
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: textColor)),
+        ),
+        TextButton(
+          onPressed: () {
+            if (noteController.text.isNotEmpty) {
+              _controller.addTextNote(
+                _controller.currentPage.value,
+                'Selected text',
+                noteController.text,
+              );
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Save',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 
@@ -1858,43 +1846,42 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
     final textColor = isDark ? Colors.white : Colors.black87;
     final textController = TextEditingController();
 
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Go to Page', style: TextStyle(color: textColor)),
-        content: TextField(
-          controller: textController,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          keyboardAppearance: iosKeyboardBrightness(context),
-          style: TextStyle(color: textColor),
-          decoration: InputDecoration(
-            hintText: 'Enter page number (1-${_controller.totalPages.value})',
-            hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+    showViewerDialog(
+      context: context,
+      backgroundColor: bgColor,
+      title: 'Go to Page',
+      content: TextField(
+        controller: textController,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        keyboardAppearance: iosKeyboardBrightness(context),
+        style: TextStyle(color: textColor),
+        decoration: InputDecoration(
+          hintText: 'Enter page number (1-\${_controller.totalPages.value})',
+          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel',
-                style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-          ),
-          TextButton(
-            onPressed: () {
-              final page = int.tryParse(textController.text);
-              if (page != null &&
-                  page >= 1 &&
-                  page <= _controller.totalPages.value) {
-                _controller.goToPage(page);
-                Navigator.of(context).pop();
-              }
-            },
-            child: Text('Go',
-                style: TextStyle(color: Theme.of(context).primaryColor)),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('Cancel',
+              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
+        ),
+        TextButton(
+          onPressed: () {
+            final page = int.tryParse(textController.text);
+            if (page != null &&
+                page >= 1 &&
+                page <= _controller.totalPages.value) {
+              _controller.goToPage(page);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text('Go',
+              style: TextStyle(color: Theme.of(context).primaryColor)),
+        ),
+      ],
     );
   }
 }

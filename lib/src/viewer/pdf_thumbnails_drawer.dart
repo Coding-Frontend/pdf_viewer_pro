@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
@@ -61,44 +62,48 @@ class PdfThumbnailsDrawer extends StatelessWidget {
                               color: textColor.withValues(alpha: 0.6)),
                         ),
                       )
-                    : Scrollbar(
-                        thumbVisibility: true,
-                        thickness: 6,
-                        radius: const Radius.circular(3),
-                        child: GridView.builder(
-                          padding: const EdgeInsets.all(12),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.75,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          itemCount: controller.totalPages.value,
-                          itemBuilder: (context, index) {
-                            final pageNum = index + 1;
-                            final isCurrentPage =
-                                controller.currentPage.value == pageNum;
-
-                            return _ThumbnailItem(
-                              pageNumber: pageNum,
-                              isSelected: isCurrentPage,
-                              isDarkMode: isDark,
-                              pdfDocument: controller.pdfDocument,
-                              onTap: () {
-                                controller.goToPage(pageNum);
-                                Navigator.of(context).pop();
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                    : _buildGrid(context, controller, isDark),
               ),
             ],
           ),
         ),
       );
     });
+  }
+
+  Widget _buildGrid(BuildContext context, PdfReaderController controller, bool isDark) {
+    final grid = GridView.builder(
+      padding: const EdgeInsets.all(12),
+      physics: iosScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: controller.totalPages.value,
+      itemBuilder: (context, index) {
+        final pageNum = index + 1;
+        final isCurrentPage = controller.currentPage.value == pageNum;
+        return _ThumbnailItem(
+          pageNumber: pageNum,
+          isSelected: isCurrentPage,
+          isDarkMode: isDark,
+          pdfDocument: controller.pdfDocument,
+          onTap: () {
+            controller.goToPage(pageNum);
+            Navigator.of(context).pop();
+          },
+        );
+      },
+    );
+    if (Platform.isIOS) return grid;
+    return Scrollbar(
+      thumbVisibility: true,
+      thickness: 6,
+      radius: const Radius.circular(3),
+      child: grid,
+    );
   }
 }
 

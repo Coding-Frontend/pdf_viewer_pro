@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
 import '../core/reactive.dart';
@@ -45,7 +47,7 @@ class PdfReaderTopBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 56,
+              height: Platform.isIOS ? 44.0 : 56.0,
               child: Row(
                 children: [
                   IconButton(
@@ -185,35 +187,52 @@ class PdfReaderBottomBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 3,
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        overlayShape:
-                            const RoundSliderOverlayShape(overlayRadius: 12),
-                        activeTrackColor: accentColor,
-                        inactiveTrackColor:
-                            isDark ? Colors.white24 : Colors.black12,
-                        thumbColor: accentColor,
-                        overlayColor: accentColor.withValues(alpha: 0.2),
-                      ),
-                      child: Slider(
-                        value: controller.currentPage.value
-                            .toDouble()
-                            .clamp(1, controller.totalPages.value.toDouble()),
-                        min: 1,
-                        max: controller.totalPages.value > 0
-                            ? controller.totalPages.value.toDouble()
-                            : 1,
-                        divisions: controller.totalPages.value > 1
-                            ? controller.totalPages.value - 1
-                            : 1,
-                        onChanged: (value) {
-                          controller.goToPage(value.round());
-                        },
-                      ),
-                    ),
+                    child: Platform.isIOS
+                        ? CupertinoSlider(
+                            value: controller.currentPage.value
+                                .toDouble()
+                                .clamp(1, controller.totalPages.value.toDouble()),
+                            min: 1,
+                            max: controller.totalPages.value > 0
+                                ? controller.totalPages.value.toDouble()
+                                : 1,
+                            divisions: controller.totalPages.value > 1
+                                ? controller.totalPages.value - 1
+                                : 1,
+                            activeColor: accentColor,
+                            onChanged: (value) {
+                              controller.goToPage(value.round());
+                            },
+                          )
+                        : SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 3,
+                              thumbShape:
+                                  const RoundSliderThumbShape(enabledThumbRadius: 6),
+                              overlayShape:
+                                  const RoundSliderOverlayShape(overlayRadius: 12),
+                              activeTrackColor: accentColor,
+                              inactiveTrackColor:
+                                  isDark ? Colors.white24 : Colors.black12,
+                              thumbColor: accentColor,
+                              overlayColor: accentColor.withValues(alpha: 0.2),
+                            ),
+                            child: Slider(
+                              value: controller.currentPage.value
+                                  .toDouble()
+                                  .clamp(1, controller.totalPages.value.toDouble()),
+                              min: 1,
+                              max: controller.totalPages.value > 0
+                                  ? controller.totalPages.value.toDouble()
+                                  : 1,
+                              divisions: controller.totalPages.value > 1
+                                  ? controller.totalPages.value - 1
+                                  : 1,
+                              onChanged: (value) {
+                                controller.goToPage(value.round());
+                              },
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 8),
                   Text(
