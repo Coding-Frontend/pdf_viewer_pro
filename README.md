@@ -35,6 +35,29 @@ A full-featured PDF viewer for Flutter **(Android & iOS)** with annotations, boo
 - 📤 **Share** — share PDF or content
 - 🪶 **SimplePdfViewer** — lightweight view-only widget for invoices/docs
 
+## Screenshots
+
+<div align="center">
+  <p>
+    <img src="screenshots/pdf_home.svg" alt="PDF Home" width="640" />
+    <img src="screenshots/pdf_reader.svg" alt="PDF Reader" width="640" />
+  </p>
+  <p>
+    <img src="screenshots/pdf_thumbnails.svg" alt="PDF Thumbnails" width="360" />
+    <img src="screenshots/pdf_toc.svg" alt="PDF TOC" width="360" />
+    <img src="screenshots/pdf_search.svg" alt="PDF Search" width="360" />
+  </p>
+  <p>
+    <img src="screenshots/pdf_annotations.svg" alt="PDF Annotations" width="360" />
+    <img src="screenshots/pdf_bookmarks.svg" alt="PDF Bookmarks" width="360" />
+    <img src="screenshots/pdf_darkmode.svg" alt="PDF Dark Mode" width="360" />
+  </p>
+  <p>
+    <img src="screenshots/pdf_share.svg" alt="PDF Share" width="720" />
+  </p>
+</div>
+
+
 ## Getting Started
 
 ```yaml
