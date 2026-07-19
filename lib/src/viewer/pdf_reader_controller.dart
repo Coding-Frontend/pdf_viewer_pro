@@ -15,6 +15,8 @@ import '../feature_config.dart';
 import '../annotations/annotation_models.dart';
 import '../annotations/annotation_toolbar.dart';
 
+enum PdfFitMode { custom, page, width, height }
+
 /// Controller for PDF Reader using pdfrx (PDFium FFI)
 class PdfReaderController extends PluginController {
   final String? filePath;
@@ -45,11 +47,12 @@ class PdfReaderController extends PluginController {
     this.externalDarkMode,
   });
 
-  late final PluginStorage _storage;
+  PluginStorage _storage = PluginStorage.memory();
 
   // PDF Document
   PdfDocument? pdfDocument;
   PdfViewerController? pdfViewerController;
+  PdfTextSearcher? pdfTextSearcher;
   String? _resolvedFilePath;
 
   /// The local file path of the PDF (after download if needed)
@@ -85,6 +88,8 @@ class PdfReaderController extends PluginController {
   final isDarkMode = false.obs;
   final scrollDirection = Rx<Axis>(Axis.vertical);
   final zoomLevel = 1.0.obs;
+  final fitMode = Rx<PdfFitMode>(PdfFitMode.page);
+  final rotationQuarterTurns = 0.obs;
 
   // Auto-scroll
   final isAutoScrolling = false.obs;
@@ -107,6 +112,8 @@ class PdfReaderController extends PluginController {
   Timer? _autoSaveTimer;
   Timer? _controlsHideTimer;
   VoidCallback? _themeListener;
+  VoidCallback? _pdfTextSearchListener;
+  VoidCallback? _pdfViewerTransformListener;
 
   @override
   void onInit() {
@@ -132,6 +139,13 @@ class PdfReaderController extends PluginController {
     _autoScrollTimer?.cancel();
     _autoScrollProgressTimer?.cancel();
     _themeListener?.call();
+    _pdfTextSearchListener?.call();
+    final viewerController = pdfViewerController;
+    final transformListener = _pdfViewerTransformListener;
+    if (viewerController != null && transformListener != null) {
+      viewerController.removeListener(transformListener);
+    }
+    pdfTextSearcher?.dispose();
     pdfDocument?.dispose();
     _disableScreenProtector();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -222,6 +236,55 @@ class PdfReaderController extends PluginController {
     await _initializeReader();
   }
 
+  /// Keep pdfrx's text searcher paired with the active viewer controller.
+  /// The searcher caches page text, paints every match, and navigates to the
+  /// exact matching bounds instead of merely jumping to a page.
+  void _resetPdfViewerController() {
+    final previousController = pdfViewerController;
+    final previousTransformListener = _pdfViewerTransformListener;
+    if (previousController != null && previousTransformListener != null) {
+      previousController.removeListener(previousTransformListener);
+    }
+    _pdfTextSearchListener?.call();
+    pdfTextSearcher?.dispose();
+
+    final viewerController = PdfViewerController();
+    pdfViewerController = viewerController;
+    _pdfViewerTransformListener = () {
+      if (viewerController.isReady) {
+        zoomLevel.value = viewerController.currentZoom;
+      }
+    };
+    viewerController.addListener(_pdfViewerTransformListener!);
+
+    final searcher = PdfTextSearcher(viewerController);
+    pdfTextSearcher = searcher;
+    _pdfTextSearchListener = searcher.addListener(_syncPdfSearchState);
+  }
+
+  void _syncPdfSearchState() {
+    final searcher = pdfTextSearcher;
+    if (searcher == null) return;
+
+    searchResults
+      ..clear()
+      ..addAll(
+        searcher.matches.map(
+          (match) => PdfTextMatch(
+            pageNumber: match.pageNumber,
+            startIndex: match.start,
+            endIndex: match.end,
+            text: match.fragments.map((fragment) => fragment.text).join(),
+          ),
+        ),
+      );
+
+    final currentIndex = searcher.currentIndex;
+    if (currentIndex != null && currentIndex >= 0) {
+      currentSearchIndex.value = currentIndex;
+    }
+  }
+
   Future<void> _loadPdfDocument() async {
     try {
       final isUrl = _resolvedFilePath!.startsWith('http://') ||
@@ -259,7 +322,7 @@ class PdfReaderController extends PluginController {
       totalPages.value = pdfDocument!.pages.length;
       debugPrint('PDF loaded with ${totalPages.value} pages');
 
-      pdfViewerController = PdfViewerController();
+      _resetPdfViewerController();
     } catch (e) {
       debugPrint('Exception in _loadPdfDocument: $e');
       throw Exception('Failed to load PDF: $e');
@@ -350,7 +413,8 @@ class PdfReaderController extends PluginController {
           loadingProgress.value = 1.0;
           return localPath;
         } else if (streamedResponse.statusCode == 401) {
-          throw Exception('Authentication required. Please check your credentials.');
+          throw Exception(
+              'Authentication required. Please check your credentials.');
         } else if (streamedResponse.statusCode == 403) {
           throw Exception(
               'Access denied. You may not have purchased this book.');
@@ -448,6 +512,17 @@ class PdfReaderController extends PluginController {
 
     final savedFullscreen = _storage.read<bool>('pdf_fullscreen');
     if (savedFullscreen != null) isFullscreen.value = savedFullscreen;
+
+    final savedRotation = _storage.read<int>('pdf_rotation_quarter_turns');
+    if (savedRotation != null) rotationQuarterTurns.value = savedRotation % 4;
+
+    final savedFitMode = _storage.read<String>('pdf_fit_mode');
+    if (savedFitMode != null) {
+      fitMode.value = PdfFitMode.values.firstWhere(
+        (mode) => mode.name == savedFitMode,
+        orElse: () => PdfFitMode.page,
+      );
+    }
   }
 
   void savePreferences() {
@@ -457,6 +532,8 @@ class PdfReaderController extends PluginController {
     _storage.write('pdf_auto_scroll_interval', autoScrollIntervalSeconds.value);
     _storage.write('pdf_keep_screen_on', keepScreenOn.value);
     _storage.write('pdf_fullscreen', isFullscreen.value);
+    _storage.write('pdf_rotation_quarter_turns', rotationQuarterTurns.value);
+    _storage.write('pdf_fit_mode', fitMode.value.name);
   }
 
   // ============= Session & Progress =============
@@ -481,7 +558,9 @@ class PdfReaderController extends PluginController {
     }
 
     try {
-      await saveProgress();
+      // Save progress locally only (not to server — onSessionEnd handles that)
+      _storage.write('pdf_page_$_bookIdForStorage', currentPage.value);
+      _storage.write('pdf_progress_$_bookIdForStorage', progress.value);
 
       if (serviceConfig.onSessionEnd != null) {
         await serviceConfig.onSessionEnd!(
@@ -503,10 +582,11 @@ class PdfReaderController extends PluginController {
       _storage.write('pdf_page_$_bookIdForStorage', currentPage.value);
       _storage.write('pdf_progress_$_bookIdForStorage', progress.value);
 
-      if (_bookIdForStorage > 0 && serviceConfig.onSessionEnd != null) {
-        await serviceConfig.onSessionEnd!(
+      // Sync progress to server via onProgressSync callback (not onSessionEnd)
+      if (_bookIdForStorage > 0 && serviceConfig.onProgressSync != null) {
+        await serviceConfig.onProgressSync!(
           _bookIdForStorage,
-          0,
+          progress.value * 100,
           currentPage.value,
           totalPages.value,
         );
@@ -570,8 +650,7 @@ class PdfReaderController extends PluginController {
 
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (pdfViewerController == null) {
-        debugPrint(
-            'goToPage: Controller became null, attempt ${attempt + 1}');
+        debugPrint('goToPage: Controller became null, attempt ${attempt + 1}');
         return;
       }
 
@@ -647,7 +726,7 @@ class PdfReaderController extends PluginController {
     if (scrollDirection.value == direction) return;
 
     final pageToRestore = currentPage.value;
-    pdfViewerController = PdfViewerController();
+    _resetPdfViewerController();
     scrollDirection.value = direction;
     savePreferences();
     _restorePageAfterViewChange(pageToRestore);
@@ -655,7 +734,7 @@ class PdfReaderController extends PluginController {
 
   void toggleScrollDirection() {
     final pageToRestore = currentPage.value;
-    pdfViewerController = PdfViewerController();
+    _resetPdfViewerController();
     scrollDirection.value = scrollDirection.value == Axis.vertical
         ? Axis.horizontal
         : Axis.vertical;
@@ -698,65 +777,42 @@ class PdfReaderController extends PluginController {
   void exitSearchMode() {
     isSearchMode.value = false;
     searchQuery.value = '';
+    pdfTextSearcher?.resetTextSearch();
     searchResults.clear();
     currentSearchIndex.value = 0;
     showControls.value = true;
   }
 
   Future<void> performSearch(String query) async {
-    if (query.isEmpty || pdfDocument == null) {
+    if (!featureConfig.enableSearch || pdfTextSearcher == null) {
       searchResults.clear();
       return;
     }
 
-    searchQuery.value = query;
+    final normalizedQuery = query.trim();
+    searchQuery.value = normalizedQuery;
     searchResults.clear();
     currentSearchIndex.value = 0;
 
-    try {
-      final document = pdfDocument!;
-      for (int i = 0; i < document.pages.length; i++) {
-        final page = document.pages[i];
-        final pageText = await page.loadText();
-        final text = pageText.fullText.toLowerCase();
-        final queryLower = query.toLowerCase();
-        int startIndex = 0;
-        while (true) {
-          final index = text.indexOf(queryLower, startIndex);
-          if (index == -1) break;
-          searchResults.add(PdfTextMatch(
-            pageNumber: i + 1,
-            startIndex: index,
-            endIndex: index + query.length,
-            text: pageText.fullText.substring(index, index + query.length),
-          ));
-          startIndex = index + 1;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error performing search: $e');
+    if (normalizedQuery.isEmpty) {
+      pdfTextSearcher!.resetTextSearch();
+      return;
     }
+
+    pdfTextSearcher!.startTextSearch(
+      normalizedQuery,
+      caseInsensitive: true,
+      goToFirstMatch: true,
+      searchImmediately: true,
+    );
   }
 
   void goToNextSearchResult() {
-    if (searchResults.isEmpty) return;
-    currentSearchIndex.value =
-        (currentSearchIndex.value + 1) % searchResults.length;
-    _navigateToCurrentSearchResult();
+    pdfTextSearcher?.goToNextMatch();
   }
 
   void goToPreviousSearchResult() {
-    if (searchResults.isEmpty) return;
-    currentSearchIndex.value =
-        (currentSearchIndex.value - 1 + searchResults.length) %
-            searchResults.length;
-    _navigateToCurrentSearchResult();
-  }
-
-  void _navigateToCurrentSearchResult() {
-    if (searchResults.isEmpty) return;
-    final result = searchResults[currentSearchIndex.value];
-    goToPage(result.pageNumber);
+    pdfTextSearcher?.goToPrevMatch();
   }
 
   void toggleAutoScroll() {
@@ -814,18 +870,85 @@ class PdfReaderController extends PluginController {
   // ============= Zoom =============
 
   void zoomIn() {
-    zoomLevel.value = (zoomLevel.value * 1.25).clamp(0.5, 4.0);
-    pdfViewerController?.zoomUp();
+    final controller = pdfViewerController;
+    if (controller == null || !controller.isReady) return;
+    fitMode.value = PdfFitMode.custom;
+    final target = controller.getNextZoom(loop: false).clamp(0.5, 4.0);
+    zoomLevel.value = target;
+    controller.setZoom(controller.centerPosition, target);
   }
 
   void zoomOut() {
-    zoomLevel.value = (zoomLevel.value / 1.25).clamp(0.5, 4.0);
-    pdfViewerController?.zoomDown();
+    final controller = pdfViewerController;
+    if (controller == null || !controller.isReady) return;
+    fitMode.value = PdfFitMode.custom;
+    final target = controller.getPreviousZoom(loop: false).clamp(0.5, 4.0);
+    zoomLevel.value = target;
+    controller.setZoom(controller.centerPosition, target);
   }
 
   void resetZoom() {
+    final controller = pdfViewerController;
+    if (controller == null || !controller.isReady) return;
+    fitMode.value = PdfFitMode.custom;
     zoomLevel.value = 1.0;
-    pdfViewerController?.setZoom(pdfViewerController!.centerPosition, 1.0);
+    controller.setZoom(controller.centerPosition, 1.0);
+  }
+
+  void onViewerInteractionUpdate(double gestureScale) {
+    if ((gestureScale - 1).abs() > 0.01) {
+      fitMode.value = PdfFitMode.custom;
+    }
+  }
+
+  void onViewerReady(PdfViewerController controller) {
+    zoomLevel.value = controller.currentZoom;
+    final mode = fitMode.value;
+    if (mode != PdfFitMode.custom) {
+      Future.microtask(() => applyFitMode(mode));
+    }
+  }
+
+  Future<void> applyFitMode(PdfFitMode mode) async {
+    final controller = pdfViewerController;
+    fitMode.value = mode;
+    savePreferences();
+    if (controller == null ||
+        !controller.isReady ||
+        mode == PdfFitMode.custom) {
+      return;
+    }
+
+    final page = currentPage.value.clamp(1, totalPages.value);
+    final visualMode = rotationQuarterTurns.value.isOdd
+        ? switch (mode) {
+            PdfFitMode.width => PdfFitMode.height,
+            PdfFitMode.height => PdfFitMode.width,
+            _ => mode,
+          }
+        : mode;
+
+    final destination = switch (visualMode) {
+      PdfFitMode.page => controller.calcMatrixForFit(pageNumber: page),
+      PdfFitMode.width =>
+        controller.calcMatrixFitWidthForPage(pageNumber: page),
+      PdfFitMode.height =>
+        controller.calcMatrixFitHeightForPage(pageNumber: page),
+      PdfFitMode.custom => null,
+    };
+    await controller.goTo(destination);
+    zoomLevel.value = controller.currentZoom;
+  }
+
+  void rotateClockwise() {
+    rotationQuarterTurns.value = (rotationQuarterTurns.value + 1) % 4;
+    savePreferences();
+    final mode = fitMode.value;
+    if (mode != PdfFitMode.custom) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        applyFitMode(mode);
+      });
+    }
   }
 
   // ============= Bookmarks =============
@@ -862,8 +985,8 @@ class PdfReaderController extends PluginController {
     final bookmarkPage = page ?? currentPage.value;
 
     if (bookmarkedPages.contains(bookmarkPage)) {
-      _showMessage(
-          'Page $bookmarkPage is already bookmarked', ViewerMessageType.warning);
+      _showMessage('Page $bookmarkPage is already bookmarked',
+          ViewerMessageType.warning);
       return;
     }
 
@@ -1168,6 +1291,7 @@ class PdfReaderController extends PluginController {
     }
 
     _saveAnnotationsLocally();
+    _syncAnnotationsToServer();
   }
 
   void redoAnnotation() {
@@ -1245,6 +1369,7 @@ class PdfReaderController extends PluginController {
     }
 
     _saveAnnotationsLocally();
+    _syncAnnotationsToServer();
   }
 
   bool get canUndo => undoStack.isNotEmpty;
@@ -1277,8 +1402,7 @@ class PdfReaderController extends PluginController {
     }
 
     // Try to load from server via callback
-    if (_bookIdForStorage > 0 &&
-        serviceConfig.onAnnotationsLoad != null) {
+    if (_bookIdForStorage > 0 && serviceConfig.onAnnotationsLoad != null) {
       try {
         final serverAnnotations =
             await serviceConfig.onAnnotationsLoad!(_bookIdForStorage);
@@ -1338,8 +1462,7 @@ class PdfReaderController extends PluginController {
   }
 
   Future<void> _syncAnnotationsToServer() async {
-    if (_bookIdForStorage <= 0 ||
-        serviceConfig.onAnnotationsSync == null) {
+    if (_bookIdForStorage <= 0 || serviceConfig.onAnnotationsSync == null) {
       return;
     }
 

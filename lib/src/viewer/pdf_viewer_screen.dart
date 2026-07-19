@@ -12,6 +12,7 @@ import 'pdf_settings_sheet.dart';
 import 'pdf_bookmarks_sheet.dart';
 import 'pdf_thumbnails_drawer.dart';
 import 'pdf_search_overlay.dart';
+import 'reader_selection_guard.dart';
 import '../annotations/annotation_toolbar.dart';
 import '../annotations/annotation_canvas.dart';
 import '../annotations/annotation_models.dart';
@@ -133,7 +134,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
         SystemChrome.setSystemUIOverlayStyle(
           SystemUiOverlayStyle(
             statusBarColor: statusBarColor,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
             systemNavigationBarColor: statusBarColor,
             systemNavigationBarIconBrightness:
@@ -157,6 +159,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                           GestureDetector(
                             onTap: _controller.toggleControls,
                             onDoubleTap: () => _controller.toggleFullscreen(),
+                            onSecondaryTap: () {},
                             child: _buildPdfViewer(isDark),
                           ),
                           // Exit button in fullscreen
@@ -204,12 +207,14 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                 child: Stack(
                                   children: [
                                     // PDF viewer - use Row layout when search mode is active
-                                    if (isSearchMode && _controller.searchResults.isNotEmpty)
+                                    if (isSearchMode &&
+                                        _controller.searchResults.isNotEmpty)
                                       Row(
                                         children: [
                                           // PDF takes remaining space (minus minimap width)
                                           Expanded(
                                             child: GestureDetector(
+                                              onSecondaryTap: () {},
                                               child: _buildPdfViewer(isDark),
                                             ),
                                           ),
@@ -217,8 +222,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                           SizedBox(
                                             width: 48,
                                             child: Padding(
-                                              padding: const EdgeInsets.only(top: 120, bottom: 8, right: 8, left: 4),
-                                              child: _buildSearchMinimap(isDark),
+                                              padding: const EdgeInsets.only(
+                                                  top: 120,
+                                                  bottom: 8,
+                                                  right: 8,
+                                                  left: 4),
+                                              child:
+                                                  _buildSearchMinimap(isDark),
                                             ),
                                           ),
                                         ],
@@ -230,7 +240,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                             : _controller.toggleControls,
                                         onDoubleTap: isSearchMode
                                             ? null
-                                            : () => _controller.toggleFullscreen(),
+                                            : () =>
+                                                _controller.toggleFullscreen(),
+                                        onSecondaryTap: () {},
                                         child: _buildPdfViewer(isDark),
                                       ),
                                     // Search mode overlay - only shows top bar
@@ -266,7 +278,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                             Positioned(
                               right: 16,
                               bottom: MediaQuery.of(context).padding.bottom +
-                                  (showControls ? 130 : 16),
+                                  (showControls ? 174 : 16),
                               child: FloatingActionButton.extended(
                                 heroTag: 'edit_fab',
                                 onPressed: () =>
@@ -349,7 +361,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             final page = ((localPosition.dy / height) * totalPages)
                 .clamp(1, totalPages)
                 .round();
-            
+
             // Check if tapped on a search result page
             if (resultsByPage.containsKey(page)) {
               final resultIndex =
@@ -451,7 +463,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       // Format bytes to human readable
       String formatBytes(int bytes) {
         if (bytes < 1024) return '$bytes B';
-        if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+        if (bytes < 1024 * 1024) {
+          return '${(bytes / 1024).toStringAsFixed(1)} KB';
+        }
         return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
       }
 
@@ -599,179 +613,219 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     final scrollDirection = _controller.scrollDirection.value;
     final isHorizontal = scrollDirection == Axis.horizontal;
 
-    // Use local file path from controller (after download if needed)
+    // Determine if the effective path is a URL or a local file path
     final effectiveFilePath =
         _controller.localFilePath.value ?? widget.filePath;
-    if (effectiveFilePath == null || effectiveFilePath.isEmpty) {
+    final effectiveFileUrl = widget.fileUrl;
+
+    // Priority: local file > downloaded file > URL
+    final isLocalPath = effectiveFilePath != null &&
+        effectiveFilePath.isNotEmpty &&
+        !effectiveFilePath.startsWith('http://') &&
+        !effectiveFilePath.startsWith('https://');
+    final isUrlPath = (effectiveFilePath?.startsWith('http://') ?? false) ||
+        (effectiveFilePath?.startsWith('https://') ?? false) ||
+        (effectiveFileUrl?.isNotEmpty ?? false);
+
+    if (!isLocalPath && !isUrlPath) {
       return const Center(child: Text('No file path available'));
     }
-    debugPrint(
-        'PdfViewer using path: $effectiveFilePath, scrollDirection: $scrollDirection');
 
-    return Container(
-      color: bgColor,
-      child: PdfViewer.file(
-        effectiveFilePath,
-        // Use key to force rebuild when scroll direction changes
-        key: ValueKey('pdf_viewer_${scrollDirection.name}'),
-        controller: _controller.pdfViewerController,
-        params: PdfViewerParams(
-          backgroundColor: bgColor,
-          enableTextSelection: true,
-          // In horizontal mode, use top anchor for page alignment; in vertical use all
-          pageAnchor: isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
-          // Use layoutPages for horizontal/vertical scrolling
-          layoutPages: isHorizontal ? _horizontalLayout : null,
-          // Custom text selection toolbar with highlight/note options
-          selectableRegionInjector: (context, child) {
-            return SelectionArea(
-              contextMenuBuilder: (context, selectableRegionState) {
-                return _buildTextSelectionToolbar(
-                  context,
-                  selectableRegionState,
-                );
-              },
-              child: child,
-            );
-          },
-          onPageChanged: (pageNumber) {
-            if (pageNumber != null) {
-              _controller.onPageChanged(pageNumber);
-            }
-          },
-          // Add annotation canvas overlay and bookmark icon on each page
-          pageOverlaysBuilder: (context, pageRect, page) {
-            final pageNum = page.pageNumber;
+    if (isLocalPath) {
+      debugPrint(
+          'PdfViewer using local file: $effectiveFilePath, scrollDirection: $scrollDirection');
+    } else {
+      debugPrint(
+          'PdfViewer using URL: ${effectiveFileUrl ?? effectiveFilePath}, scrollDirection: $scrollDirection');
+    }
 
-            return [
-              // Bookmark icon on each page corner - wrapped in Obx for reactivity
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Obx(() {
-                  final isBookmarked =
-                      _controller.bookmarkedPages.contains(pageNum);
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _controller.toggleBookmarkForPage(pageNum),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isBookmarked
-                              ? Theme.of(context)
-                                  .primaryColor
-                                  .withValues(alpha: 0.9)
-                              : Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          isBookmarked ? ViewerIcons.bookmark : ViewerIcons.bookmarkOutline,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+    return RotatedBox(
+      quarterTurns: _controller.rotationQuarterTurns.value,
+      child: Container(
+        color: bgColor,
+        child: isLocalPath
+            ? PdfViewer.file(
+                effectiveFilePath,
+                // Use key to force rebuild when scroll direction changes
+                key: ValueKey('pdf_file_${scrollDirection.name}'),
+                controller: _controller.pdfViewerController,
+                initialPageNumber: _controller.currentPage.value,
+                params: PdfViewerParams(
+                  backgroundColor: bgColor,
+                  maxScale: 4.0,
+                  enableTextSelection:
+                      _controller.featureConfig.enableTextSelection,
+                  onInteractionUpdate: (details) =>
+                      _controller.onViewerInteractionUpdate(details.scale),
+                  onViewerReady: (_, controller) =>
+                      _controller.onViewerReady(controller),
+                  onViewSizeChanged: (_, __, ___) {
+                    final mode = _controller.fitMode.value;
+                    if (mode != PdfFitMode.custom) {
+                      Future.microtask(() => _controller.applyFitMode(mode));
+                    }
+                  },
+                  pageAnchor:
+                      isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
+                  layoutPages: isHorizontal ? _horizontalLayout : null,
+                  selectableRegionInjector:
+                      _controller.featureConfig.enableTextSelection
+                          ? (context, child) {
+                              return ReaderSelectionGuard(
+                                menuBuilder: (context, selectableRegionState) =>
+                                    _buildTextSelectionToolbar(
+                                  context,
+                                  selectableRegionState,
+                                ),
+                                child: child,
+                              );
+                            }
+                          : null,
+                  onPageChanged: (pageNumber) {
+                    if (pageNumber != null) {
+                      _controller.onPageChanged(pageNumber);
+                    }
+                  },
+                  pageOverlaysBuilder: (context, pageRect, page) {
+                    return _buildPageOverlays(context, page, pageRect);
+                  },
+                  loadingBannerBuilder: (context, bytesDownloaded, totalBytes) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: totalBytes != null && totalBytes > 0
+                            ? bytesDownloaded / totalBytes
+                            : null,
+                        color: Theme.of(context).primaryColor,
                       ),
-                    ),
-                  );
-                }),
+                    );
+                  },
+                  errorBannerBuilder:
+                      (context, error, stackTrace, documentRef) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(ViewerIcons.error,
+                              size: 48, color: Colors.red[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Error loading page',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  pagePaintCallbacks: [
+                    if (_controller.pdfTextSearcher != null)
+                      _controller.pdfTextSearcher!.pageTextMatchPaintCallback,
+                    if (isDark)
+                      (canvas, pageRect, page) {
+                        canvas.drawRect(
+                          pageRect,
+                          Paint()
+                            ..color = Colors.black.withValues(alpha: 0.1)
+                            ..blendMode = BlendMode.darken,
+                        );
+                      },
+                  ],
+                ),
+              )
+            : PdfViewer.uri(
+                Uri.parse(effectiveFileUrl ?? effectiveFilePath!),
+                // Use key to force rebuild when scroll direction changes
+                key: ValueKey('pdf_uri_${scrollDirection.name}'),
+                controller: _controller.pdfViewerController,
+                initialPageNumber: _controller.currentPage.value,
+                params: PdfViewerParams(
+                  backgroundColor: bgColor,
+                  maxScale: 4.0,
+                  enableTextSelection:
+                      _controller.featureConfig.enableTextSelection,
+                  onInteractionUpdate: (details) =>
+                      _controller.onViewerInteractionUpdate(details.scale),
+                  onViewerReady: (_, controller) =>
+                      _controller.onViewerReady(controller),
+                  onViewSizeChanged: (_, __, ___) {
+                    final mode = _controller.fitMode.value;
+                    if (mode != PdfFitMode.custom) {
+                      Future.microtask(() => _controller.applyFitMode(mode));
+                    }
+                  },
+                  // In horizontal mode, use top anchor for page alignment; in vertical use all
+                  pageAnchor:
+                      isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
+                  // Use layoutPages for horizontal/vertical scrolling
+                  layoutPages: isHorizontal ? _horizontalLayout : null,
+                  // Custom text selection toolbar with highlight/note options
+                  selectableRegionInjector:
+                      _controller.featureConfig.enableTextSelection
+                          ? (context, child) {
+                              return ReaderSelectionGuard(
+                                menuBuilder: (context, selectableRegionState) =>
+                                    _buildTextSelectionToolbar(
+                                  context,
+                                  selectableRegionState,
+                                ),
+                                child: child,
+                              );
+                            }
+                          : null,
+                  onPageChanged: (pageNumber) {
+                    if (pageNumber != null) {
+                      _controller.onPageChanged(pageNumber);
+                    }
+                  },
+                  // Add annotation canvas overlay and bookmark icon on each page
+                  pageOverlaysBuilder: (context, pageRect, page) {
+                    return _buildPageOverlays(context, page, pageRect);
+                  },
+                  loadingBannerBuilder: (context, bytesDownloaded, totalBytes) {
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: totalBytes != null && totalBytes > 0
+                            ? bytesDownloaded / totalBytes
+                            : null,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    );
+                  },
+                  errorBannerBuilder:
+                      (context, error, stackTrace, documentRef) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(ViewerIcons.error,
+                              size: 48, color: Colors.red[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Error loading page',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  pagePaintCallbacks: [
+                    if (_controller.pdfTextSearcher != null)
+                      _controller.pdfTextSearcher!.pageTextMatchPaintCallback,
+                    if (isDark)
+                      (canvas, pageRect, page) {
+                        canvas.drawRect(
+                          pageRect,
+                          Paint()
+                            ..color = Colors.black.withValues(alpha: 0.1)
+                            ..blendMode = BlendMode.darken,
+                        );
+                      },
+                  ],
+                ),
               ),
-              // Annotation canvas - wrapped in Obx for reactivity
-              Obx(() {
-                // Access pageAnnotations.value to ensure GetX tracks changes to the map
-                final allAnnotations = _controller.pageAnnotations;
-                final annotations = allAnnotations[pageNum] ??
-                    PageAnnotations(pageNumber: pageNum);
-                final isAnnotationMode =
-                    _controller.annotationController.isAnnotationMode.value;
-                final activeTool =
-                    _controller.annotationController.selectedTool.value;
-
-                if (!isAnnotationMode &&
-                    annotations.strokes.isEmpty &&
-                    annotations.notes.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                // Scale annotations to current pageRect size
-                final scaledStrokes = annotations.getScaledStrokes(
-                    pageRect.width, pageRect.height);
-                final scaledNotes =
-                    annotations.getScaledNotes(pageRect.width, pageRect.height);
-
-                return Positioned.fill(
-                  child: AnnotationCanvas(
-                    canvasSize: Size(pageRect.width, pageRect.height),
-                    activeTool: isAnnotationMode ? activeTool : null,
-                    penColor: _controller.annotationController.currentColor,
-                    highlightColor: _controller
-                        .annotationController.currentColor
-                        .withValues(alpha: 0.4),
-                    strokeWidth: _controller
-                        .annotationController.selectedStrokeWidth.value,
-                    strokes: scaledStrokes,
-                    notes: scaledNotes,
-                    enabled: isAnnotationMode,
-                    onStrokeCompleted: (stroke) => _controller.addStroke(
-                      pageNum,
-                      stroke,
-                      refWidth: pageRect.width,
-                      refHeight: pageRect.height,
-                    ),
-                    onNoteRequested: (offset) => _showNoteDialog(
-                        pageNum, offset,
-                        refWidth: pageRect.width, refHeight: pageRect.height),
-                    onEraseStroke: (strokeId) =>
-                        _controller.removeStroke(pageNum, strokeId),
-                    onNoteTapped: (note) => _showNoteDialog(
-                        pageNum, Offset(note.x, note.y),
-                        existingNote: note,
-                        refWidth: pageRect.width,
-                        refHeight: pageRect.height),
-                  ),
-                );
-              }),
-            ];
-          },
-          loadingBannerBuilder: (context, bytesDownloaded, totalBytes) {
-            return Center(
-              child: CircularProgressIndicator(
-                value: totalBytes != null && totalBytes > 0
-                    ? bytesDownloaded / totalBytes
-                    : null,
-                color: Theme.of(context).primaryColor,
-              ),
-            );
-          },
-          errorBannerBuilder: (context, error, stackTrace, documentRef) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(ViewerIcons.error, size: 48, color: Colors.red[400]),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Error loading page',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-          pagePaintCallbacks: [
-            if (isDark)
-              (canvas, pageRect, page) {
-                canvas.drawRect(
-                  pageRect,
-                  Paint()
-                    ..color = Colors.black.withValues(alpha: 0.1)
-                    ..blendMode = BlendMode.darken,
-                );
-              },
-          ],
-        ),
       ),
     );
   }
@@ -802,6 +856,96 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     }
     return PdfPageLayout(
         pageLayouts: pageLayouts, documentSize: Size(x, height));
+  }
+
+  /// Build annotation canvas overlay and bookmark icon for each PDF page.
+  List<Widget> _buildPageOverlays(
+      BuildContext context, PdfPage page, Rect pageRect) {
+    final pageNum = page.pageNumber;
+
+    return [
+      // Bookmark icon on each page corner - wrapped in Obx for reactivity
+      Positioned(
+        top: 8,
+        right: 8,
+        child: Obx(() {
+          final isBookmarked = _controller.bookmarkedPages.contains(pageNum);
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _controller.toggleBookmarkForPage(pageNum),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isBookmarked
+                      ? Theme.of(context).primaryColor.withValues(alpha: 0.9)
+                      : Colors.black.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  isBookmarked
+                      ? ViewerIcons.bookmark
+                      : ViewerIcons.bookmarkOutline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+      // Annotation canvas - wrapped in Obx for reactivity
+      Obx(() {
+        final allAnnotations = _controller.pageAnnotations;
+        final annotations =
+            allAnnotations[pageNum] ?? PageAnnotations(pageNumber: pageNum);
+        final isAnnotationMode =
+            _controller.annotationController.isAnnotationMode.value;
+        final activeTool = _controller.annotationController.selectedTool.value;
+
+        if (!isAnnotationMode &&
+            annotations.strokes.isEmpty &&
+            annotations.notes.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final scaledStrokes =
+            annotations.getScaledStrokes(pageRect.width, pageRect.height);
+        final scaledNotes =
+            annotations.getScaledNotes(pageRect.width, pageRect.height);
+
+        return Positioned.fill(
+          child: AnnotationCanvas(
+            canvasSize: Size(pageRect.width, pageRect.height),
+            activeTool: isAnnotationMode ? activeTool : null,
+            penColor: _controller.annotationController.currentColor,
+            highlightColor: _controller.annotationController.currentColor
+                .withValues(alpha: 0.4),
+            strokeWidth:
+                _controller.annotationController.selectedStrokeWidth.value,
+            strokes: scaledStrokes,
+            notes: scaledNotes,
+            enabled: isAnnotationMode,
+            onStrokeCompleted: (stroke) => _controller.addStroke(
+              pageNum,
+              stroke,
+              refWidth: pageRect.width,
+              refHeight: pageRect.height,
+            ),
+            onNoteRequested: (offset) => _showNoteDialog(pageNum, offset,
+                refWidth: pageRect.width, refHeight: pageRect.height),
+            onEraseStroke: (strokeId) =>
+                _controller.removeStroke(pageNum, strokeId),
+            onNoteTapped: (note) => _showNoteDialog(
+                pageNum, Offset(note.x, note.y),
+                existingNote: note,
+                refWidth: pageRect.width,
+                refHeight: pageRect.height),
+          ),
+        );
+      }),
+    ];
   }
 
   Widget _buildFullscreenExitButton(bool isDark) {
@@ -874,9 +1018,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 // Copy button
                 InkWell(
                   onTap: () {
-                    selectableRegionState
-                        .copySelection(SelectionChangedCause.toolbar);
+                    Actions.invoke(
+                      selectableRegionState.context,
+                      CopySelectionTextIntent.copy,
+                    );
                     selectableRegionState.hideToolbar();
+                    // Show feedback that text was copied
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Text copied to clipboard'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
@@ -902,9 +1057,27 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                 ),
                 // Note button
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     selectableRegionState.hideToolbar();
-                    _showAddNoteForTextDialog();
+                    // Save clipboard before overwriting to capture selected text
+                    final oldClipboard =
+                        await Clipboard.getData(Clipboard.kTextPlain);
+                    if (!mounted || !selectableRegionState.mounted) return;
+                    Actions.invoke(
+                      selectableRegionState.context,
+                      CopySelectionTextIntent.copy,
+                    );
+                    final selectedText =
+                        (await Clipboard.getData(Clipboard.kTextPlain))?.text ??
+                            '';
+                    // Restore original clipboard content
+                    if (oldClipboard?.text != null) {
+                      await Clipboard.setData(
+                          ClipboardData(text: oldClipboard!.text!));
+                    }
+                    if (context.mounted && selectedText.isNotEmpty) {
+                      _showAddNoteForTextDialog(selectedText: selectedText);
+                    }
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
@@ -931,7 +1104,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
     );
   }
 
-  void _showAddNoteForTextDialog() {
+  void _showAddNoteForTextDialog({String selectedText = ''}) {
     final isDark = _controller.isDarkMode.value;
     final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
@@ -977,7 +1150,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
             if (noteController.text.isNotEmpty) {
               _controller.addTextNote(
                 _controller.currentPage.value,
-                'Selected text',
+                selectedText,
                 noteController.text,
               );
               Navigator.of(context).pop();
@@ -1196,6 +1369,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                         onDoubleTap: isSearchMode
                             ? null
                             : () => _controller.toggleFullscreen(),
+                        onSecondaryTap: () {},
                         child: _buildDirectPdfViewer(isDark),
                       ),
                       // Search mode overlay (Google Drive style) - only shows top bar
@@ -1247,7 +1421,7 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                         Positioned(
                           right: 16,
                           bottom: MediaQuery.of(context).padding.bottom +
-                              (showControls && !isFullscreen ? 130 : 16),
+                              (showControls && !isFullscreen ? 174 : 16),
                           child: FloatingActionButton.extended(
                             heroTag: 'edit_fab_direct',
                             onPressed: () => _controller.toggleAnnotationMode(),
@@ -1304,7 +1478,9 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
       // Format bytes to human readable
       String formatBytes(int bytes) {
         if (bytes < 1024) return '$bytes B';
-        if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+        if (bytes < 1024 * 1024) {
+          return '${(bytes / 1024).toStringAsFixed(1)} KB';
+        }
         return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
       }
 
@@ -1408,7 +1584,8 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(), child: const Text('Go Back')),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Go Back')),
                 const SizedBox(width: 16),
                 ElevatedButton(
                     onPressed: () => _controller.loadPdf(),
@@ -1434,130 +1611,153 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
       return const Center(child: Text('No file path available'));
     }
 
-    return Container(
-      color: bgColor,
-      child: PdfViewer.file(
-        effectiveFilePath,
-        // Use key to force rebuild when scroll direction changes
-        key: ValueKey('pdf_viewer_direct_${scrollDirection.name}'),
-        controller: _controller.pdfViewerController,
-        params: PdfViewerParams(
-          backgroundColor: bgColor,
-          enableTextSelection: true,
-          // In horizontal mode, use top anchor for page alignment; in vertical use all
-          pageAnchor: isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
-          layoutPages: isHorizontal ? _horizontalLayout : null,
-          // Custom text selection toolbar with highlight/note options
-          selectableRegionInjector: (context, child) {
-            return SelectionArea(
-              contextMenuBuilder: (context, selectableRegionState) {
-                return _buildTextSelectionToolbar(
-                  context,
-                  selectableRegionState,
-                );
-              },
-              child: child,
-            );
-          },
-          onPageChanged: (pageNumber) {
-            if (pageNumber != null) {
-              _controller.onPageChanged(pageNumber);
-            }
-          },
-          // Add annotation canvas overlay and bookmark icon on each page
-          pageOverlaysBuilder: (context, pageRect, page) {
-            final pageNum = page.pageNumber;
+    return RotatedBox(
+      quarterTurns: _controller.rotationQuarterTurns.value,
+      child: Container(
+        color: bgColor,
+        child: PdfViewer.file(
+          effectiveFilePath,
+          // Use key to force rebuild when scroll direction changes
+          key: ValueKey('pdf_viewer_direct_${scrollDirection.name}'),
+          controller: _controller.pdfViewerController,
+          initialPageNumber: _controller.currentPage.value,
+          params: PdfViewerParams(
+            backgroundColor: bgColor,
+            maxScale: 4.0,
+            enableTextSelection: _controller.featureConfig.enableTextSelection,
+            onInteractionUpdate: (details) =>
+                _controller.onViewerInteractionUpdate(details.scale),
+            onViewerReady: (_, controller) =>
+                _controller.onViewerReady(controller),
+            onViewSizeChanged: (_, __, ___) {
+              final mode = _controller.fitMode.value;
+              if (mode != PdfFitMode.custom) {
+                Future.microtask(() => _controller.applyFitMode(mode));
+              }
+            },
+            // In horizontal mode, use top anchor for page alignment; in vertical use all
+            pageAnchor: isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
+            layoutPages: isHorizontal ? _horizontalLayout : null,
+            pagePaintCallbacks: [
+              if (_controller.pdfTextSearcher != null)
+                _controller.pdfTextSearcher!.pageTextMatchPaintCallback,
+            ],
+            // Custom text selection toolbar with highlight/note options
+            selectableRegionInjector:
+                _controller.featureConfig.enableTextSelection
+                    ? (context, child) {
+                        return ReaderSelectionGuard(
+                          menuBuilder: (context, selectableRegionState) =>
+                              _buildTextSelectionToolbar(
+                            context,
+                            selectableRegionState,
+                          ),
+                          child: child,
+                        );
+                      }
+                    : null,
+            onPageChanged: (pageNumber) {
+              if (pageNumber != null) {
+                _controller.onPageChanged(pageNumber);
+              }
+            },
+            // Add annotation canvas overlay and bookmark icon on each page
+            pageOverlaysBuilder: (context, pageRect, page) {
+              final pageNum = page.pageNumber;
 
-            return [
-              // Bookmark icon on each page corner - wrapped in Obx for reactivity
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Obx(() {
-                  final isBookmarked =
-                      _controller.bookmarkedPages.contains(pageNum);
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _controller.toggleBookmarkForPage(pageNum),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isBookmarked
-                              ? Theme.of(context)
-                                  .primaryColor
-                                  .withValues(alpha: 0.9)
-                              : Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          isBookmarked ? ViewerIcons.bookmark : ViewerIcons.bookmarkOutline,
-                          color: Colors.white,
-                          size: 20,
+              return [
+                // Bookmark icon on each page corner - wrapped in Obx for reactivity
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Obx(() {
+                    final isBookmarked =
+                        _controller.bookmarkedPages.contains(pageNum);
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _controller.toggleBookmarkForPage(pageNum),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isBookmarked
+                                ? Theme.of(context)
+                                    .primaryColor
+                                    .withValues(alpha: 0.9)
+                                : Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Icon(
+                            isBookmarked
+                                ? ViewerIcons.bookmark
+                                : ViewerIcons.bookmarkOutline,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
+                    );
+                  }),
+                ),
+                // Annotation canvas - wrapped in Obx for reactivity
+                Obx(() {
+                  // Access pageAnnotations.value to ensure GetX tracks changes to the map
+                  final allAnnotations = _controller.pageAnnotations;
+                  final annotations = allAnnotations[pageNum] ??
+                      PageAnnotations(pageNumber: pageNum);
+                  final isAnnotationMode =
+                      _controller.annotationController.isAnnotationMode.value;
+                  final activeTool =
+                      _controller.annotationController.selectedTool.value;
+
+                  if (!isAnnotationMode &&
+                      annotations.strokes.isEmpty &&
+                      annotations.notes.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  // Scale annotations to current pageRect size
+                  final scaledStrokes = annotations.getScaledStrokes(
+                      pageRect.width, pageRect.height);
+                  final scaledNotes = annotations.getScaledNotes(
+                      pageRect.width, pageRect.height);
+
+                  return Positioned.fill(
+                    child: AnnotationCanvas(
+                      canvasSize: Size(pageRect.width, pageRect.height),
+                      activeTool: isAnnotationMode ? activeTool : null,
+                      penColor: _controller.annotationController.currentColor,
+                      highlightColor: _controller
+                          .annotationController.currentColor
+                          .withValues(alpha: 0.4),
+                      strokeWidth: _controller
+                          .annotationController.selectedStrokeWidth.value,
+                      strokes: scaledStrokes,
+                      notes: scaledNotes,
+                      enabled: isAnnotationMode,
+                      onStrokeCompleted: (stroke) => _controller.addStroke(
+                        pageNum,
+                        stroke,
+                        refWidth: pageRect.width,
+                        refHeight: pageRect.height,
+                      ),
+                      onNoteRequested: (offset) => _showNoteDialogForPath(
+                          pageNum, offset,
+                          refWidth: pageRect.width, refHeight: pageRect.height),
+                      onEraseStroke: (strokeId) =>
+                          _controller.removeStroke(pageNum, strokeId),
+                      onNoteTapped: (note) => _showNoteDialogForPath(
+                          pageNum, Offset(note.x, note.y),
+                          existingNote: note,
+                          refWidth: pageRect.width,
+                          refHeight: pageRect.height),
                     ),
                   );
                 }),
-              ),
-              // Annotation canvas - wrapped in Obx for reactivity
-              Obx(() {
-                // Access pageAnnotations.value to ensure GetX tracks changes to the map
-                final allAnnotations = _controller.pageAnnotations;
-                final annotations = allAnnotations[pageNum] ??
-                    PageAnnotations(pageNumber: pageNum);
-                final isAnnotationMode =
-                    _controller.annotationController.isAnnotationMode.value;
-                final activeTool =
-                    _controller.annotationController.selectedTool.value;
-
-                if (!isAnnotationMode &&
-                    annotations.strokes.isEmpty &&
-                    annotations.notes.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                // Scale annotations to current pageRect size
-                final scaledStrokes = annotations.getScaledStrokes(
-                    pageRect.width, pageRect.height);
-                final scaledNotes =
-                    annotations.getScaledNotes(pageRect.width, pageRect.height);
-
-                return Positioned.fill(
-                  child: AnnotationCanvas(
-                    canvasSize: Size(pageRect.width, pageRect.height),
-                    activeTool: isAnnotationMode ? activeTool : null,
-                    penColor: _controller.annotationController.currentColor,
-                    highlightColor: _controller
-                        .annotationController.currentColor
-                        .withValues(alpha: 0.4),
-                    strokeWidth: _controller
-                        .annotationController.selectedStrokeWidth.value,
-                    strokes: scaledStrokes,
-                    notes: scaledNotes,
-                    enabled: isAnnotationMode,
-                    onStrokeCompleted: (stroke) => _controller.addStroke(
-                      pageNum,
-                      stroke,
-                      refWidth: pageRect.width,
-                      refHeight: pageRect.height,
-                    ),
-                    onNoteRequested: (offset) => _showNoteDialogForPath(
-                        pageNum, offset,
-                        refWidth: pageRect.width, refHeight: pageRect.height),
-                    onEraseStroke: (strokeId) =>
-                        _controller.removeStroke(pageNum, strokeId),
-                    onNoteTapped: (note) => _showNoteDialogForPath(
-                        pageNum, Offset(note.x, note.y),
-                        existingNote: note,
-                        refWidth: pageRect.width,
-                        refHeight: pageRect.height),
-                  ),
-                );
-              }),
-            ];
-          },
+              ];
+            },
+          ),
         ),
       ),
     );
@@ -1666,7 +1866,8 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(ViewerIcons.fullscreenExit, color: Colors.white, size: 24),
+          child:
+              Icon(ViewerIcons.fullscreenExit, color: Colors.white, size: 24),
         ),
       ),
     );
@@ -1724,8 +1925,10 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
                 // Copy button
                 InkWell(
                   onTap: () {
-                    selectableRegionState
-                        .copySelection(SelectionChangedCause.toolbar);
+                    Actions.invoke(
+                      selectableRegionState.context,
+                      CopySelectionTextIntent.copy,
+                    );
                     selectableRegionState.hideToolbar();
                   },
                   borderRadius: BorderRadius.circular(8),

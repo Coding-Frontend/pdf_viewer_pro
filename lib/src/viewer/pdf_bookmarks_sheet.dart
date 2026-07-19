@@ -254,8 +254,7 @@ class _BookmarkTile extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon:
-                  Icon(ViewerIcons.delete, color: Colors.red[400], size: 20),
+              icon: Icon(ViewerIcons.delete, color: Colors.red[400], size: 20),
               onPressed: onDelete,
               tooltip: 'Remove bookmark',
             ),

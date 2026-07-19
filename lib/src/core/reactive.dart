@@ -73,7 +73,10 @@ class RxList<E> extends Rx<List<E>> implements List<E> {
   }
 
   @override
-  E operator [](int index) => value[index];
+  E operator [](int index) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value[index];
+  }
 
   @override
   void operator []=(int index, E val) {
@@ -183,13 +186,25 @@ class RxList<E> extends Rx<List<E>> implements List<E> {
 
   // --- delegated read-only members ---
   @override
-  bool get isEmpty => value.isEmpty;
+  bool get isEmpty {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.isEmpty;
+  }
+
   @override
-  bool get isNotEmpty => value.isNotEmpty;
+  bool get isNotEmpty {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.isNotEmpty;
+  }
+
   @override
   Iterator<E> get iterator => value.iterator;
   @override
-  E get first => value.first;
+  E get first {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.first;
+  }
+
   @override
   set first(E val) {
     value.first = val;
@@ -197,7 +212,11 @@ class RxList<E> extends Rx<List<E>> implements List<E> {
   }
 
   @override
-  E get last => value.last;
+  E get last {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.last;
+  }
+
   @override
   set last(E val) {
     value.last = val;
@@ -205,16 +224,30 @@ class RxList<E> extends Rx<List<E>> implements List<E> {
   }
 
   @override
-  E get single => value.single;
+  E get single {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.single;
+  }
+
   @override
   Iterable<E> get reversed => value.reversed;
   @override
-  bool contains(Object? element) => value.contains(element);
+  bool contains(Object? element) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.contains(element);
+  }
+
   @override
-  int indexOf(E element, [int start = 0]) => value.indexOf(element, start);
+  int indexOf(E element, [int start = 0]) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.indexOf(element, start);
+  }
+
   @override
-  int lastIndexOf(E element, [int? start]) =>
-      value.lastIndexOf(element, start);
+  int lastIndexOf(E element, [int? start]) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.lastIndexOf(element, start);
+  }
   @override
   int indexWhere(bool Function(E element) test, [int start = 0]) =>
       value.indexWhere(test, start);
@@ -298,7 +331,10 @@ class RxMap<K, V> extends Rx<Map<K, V>> implements Map<K, V> {
   void _notify() => refresh();
 
   @override
-  V? operator [](Object? key) => value[key];
+  V? operator [](Object? key) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value[key];
+  }
 
   @override
   void operator []=(K key, V val) {
@@ -359,21 +395,52 @@ class RxMap<K, V> extends Rx<Map<K, V>> implements Map<K, V> {
 
   // --- delegated read-only members ---
   @override
-  bool get isEmpty => value.isEmpty;
+  bool get isEmpty {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.isEmpty;
+  }
+
   @override
-  bool get isNotEmpty => value.isNotEmpty;
+  bool get isNotEmpty {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.isNotEmpty;
+  }
+
   @override
-  int get length => value.length;
+  int get length {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.length;
+  }
+
   @override
-  Iterable<K> get keys => value.keys;
+  Iterable<K> get keys {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.keys;
+  }
+
   @override
-  Iterable<V> get values => value.values;
+  Iterable<V> get values {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.values;
+  }
+
   @override
-  Iterable<MapEntry<K, V>> get entries => value.entries;
+  Iterable<MapEntry<K, V>> get entries {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.entries;
+  }
+
   @override
-  bool containsKey(Object? key) => value.containsKey(key);
+  bool containsKey(Object? key) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.containsKey(key);
+  }
+
   @override
-  bool containsValue(Object? val) => value.containsValue(val);
+  bool containsValue(Object? val) {
+    if (Rx._trackerStack.isNotEmpty) Rx._trackerStack.last.add(this);
+    return value.containsValue(val);
+  }
   @override
   void forEach(void Function(K key, V value) action) => value.forEach(action);
   @override

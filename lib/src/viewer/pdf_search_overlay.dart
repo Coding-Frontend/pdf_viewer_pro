@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
 import '../core/reactive.dart';
@@ -147,18 +148,20 @@ class _SearchTextField extends StatefulWidget {
 class _SearchTextFieldState extends State<_SearchTextField> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     // Auto focus the search field
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+      if (mounted) _focusNode.requestFocus();
     });
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _textController.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -202,14 +205,17 @@ class _SearchTextFieldState extends State<_SearchTextField> {
         ),
         onChanged: (value) {
           setState(() {});
-          // Debounced search
-          Future.delayed(const Duration(milliseconds: 300), () {
+          // Cancel previous debounce timer
+          _debounceTimer?.cancel();
+          // Debounce search by 300ms
+          _debounceTimer = Timer(const Duration(milliseconds: 300), () {
             if (_textController.text == value) {
               widget.onSearch(value);
             }
           });
         },
         onSubmitted: (value) {
+          _debounceTimer?.cancel();
           widget.onSearch(value);
         },
       ),

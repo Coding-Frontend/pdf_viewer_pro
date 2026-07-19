@@ -71,7 +71,8 @@ class PdfThumbnailsDrawer extends StatelessWidget {
     });
   }
 
-  Widget _buildGrid(BuildContext context, PdfReaderController controller, bool isDark) {
+  Widget _buildGrid(
+      BuildContext context, PdfReaderController controller, bool isDark) {
     final grid = GridView.builder(
       padding: const EdgeInsets.all(12),
       physics: iosScrollPhysics(),

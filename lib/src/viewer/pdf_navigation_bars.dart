@@ -191,7 +191,8 @@ class PdfReaderBottomBar extends StatelessWidget {
                         ? CupertinoSlider(
                             value: controller.currentPage.value
                                 .toDouble()
-                                .clamp(1, controller.totalPages.value.toDouble()),
+                                .clamp(
+                                    1, controller.totalPages.value.toDouble()),
                             min: 1,
                             max: controller.totalPages.value > 0
                                 ? controller.totalPages.value.toDouble()
@@ -207,10 +208,10 @@ class PdfReaderBottomBar extends StatelessWidget {
                         : SliderTheme(
                             data: SliderTheme.of(context).copyWith(
                               trackHeight: 3,
-                              thumbShape:
-                                  const RoundSliderThumbShape(enabledThumbRadius: 6),
-                              overlayShape:
-                                  const RoundSliderOverlayShape(overlayRadius: 12),
+                              thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 6),
+                              overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 12),
                               activeTrackColor: accentColor,
                               inactiveTrackColor:
                                   isDark ? Colors.white24 : Colors.black12,
@@ -220,7 +221,8 @@ class PdfReaderBottomBar extends StatelessWidget {
                             child: Slider(
                               value: controller.currentPage.value
                                   .toDouble()
-                                  .clamp(1, controller.totalPages.value.toDouble()),
+                                  .clamp(1,
+                                      controller.totalPages.value.toDouble()),
                               min: 1,
                               max: controller.totalPages.value > 0
                                   ? controller.totalPages.value.toDouble()
@@ -246,6 +248,90 @@ class PdfReaderBottomBar extends StatelessWidget {
                 ],
               ),
             ),
+            if (controller.featureConfig.enableZoomControls ||
+                controller.featureConfig.enableFitControls ||
+                controller.featureConfig.enableRotation)
+              SizedBox(
+                height: 44,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    children: [
+                      if (controller.featureConfig.enableZoomControls) ...[
+                        _PdfControlButton(
+                          icon: Icons.remove,
+                          tooltip: 'Zoom out',
+                          onTap: controller.zoomLevel.value > 0.5
+                              ? controller.zoomOut
+                              : null,
+                          color: textColor,
+                        ),
+                        SizedBox(
+                          width: 54,
+                          child: Text(
+                            '${(controller.zoomLevel.value * 100).round()}%',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        _PdfControlButton(
+                          icon: Icons.add,
+                          tooltip: 'Zoom in',
+                          onTap: controller.zoomLevel.value < 4
+                              ? controller.zoomIn
+                              : null,
+                          color: textColor,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      if (controller.featureConfig.enableFitControls) ...[
+                        _PdfControlButton(
+                          icon: Icons.fit_screen,
+                          tooltip: 'Fit page',
+                          onTap: () => controller.applyFitMode(PdfFitMode.page),
+                          color: textColor,
+                          selected: controller.fitMode.value == PdfFitMode.page,
+                          selectedColor: accentColor,
+                        ),
+                        _PdfControlButton(
+                          icon: Icons.swap_horiz,
+                          tooltip: 'Fit width',
+                          onTap: () =>
+                              controller.applyFitMode(PdfFitMode.width),
+                          color: textColor,
+                          selected:
+                              controller.fitMode.value == PdfFitMode.width,
+                          selectedColor: accentColor,
+                        ),
+                        _PdfControlButton(
+                          icon: Icons.swap_vert,
+                          tooltip: 'Fit height',
+                          onTap: () =>
+                              controller.applyFitMode(PdfFitMode.height),
+                          color: textColor,
+                          selected:
+                              controller.fitMode.value == PdfFitMode.height,
+                          selectedColor: accentColor,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      if (controller.featureConfig.enableRotation)
+                        _PdfControlButton(
+                          icon: Icons.rotate_right,
+                          tooltip:
+                              'Rotate clockwise (${controller.rotationQuarterTurns.value * 90}°)',
+                          onTap: controller.rotateClockwise,
+                          color: textColor,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
               child: Row(
@@ -296,6 +382,50 @@ class PdfReaderBottomBar extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+class _PdfControlButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final Color color;
+  final bool selected;
+  final Color? selectedColor;
+
+  const _PdfControlButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    required this.color,
+    this.selected = false,
+    this.selectedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = selectedColor ?? Theme.of(context).primaryColor;
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onTap,
+        visualDensity: VisualDensity.compact,
+        constraints: const BoxConstraints.tightFor(width: 40, height: 36),
+        style: IconButton.styleFrom(
+          backgroundColor:
+              selected ? activeColor.withValues(alpha: 0.16) : null,
+        ),
+        icon: Icon(
+          icon,
+          size: 20,
+          color: onTap == null
+              ? color.withValues(alpha: 0.3)
+              : selected
+                  ? activeColor
+                  : color,
+        ),
+      ),
+    );
   }
 }
 

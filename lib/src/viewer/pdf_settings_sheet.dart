@@ -173,7 +173,8 @@ class PdfSettingsSheet extends StatelessWidget {
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
-                                builder: (_) => PdfBookmarksSheet(controller: controller),
+                                builder: (_) =>
+                                    PdfBookmarksSheet(controller: controller),
                               );
                             },
                             child: Text(

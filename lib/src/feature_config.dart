@@ -32,6 +32,15 @@ class PdfViewerFeatureConfig {
   /// Enable/disable page navigation slider.
   final bool enablePageSlider;
 
+  /// Enable/disable explicit zoom in/out controls.
+  final bool enableZoomControls;
+
+  /// Enable/disable fit page/width/height controls.
+  final bool enableFitControls;
+
+  /// Enable/disable clockwise page rotation.
+  final bool enableRotation;
+
   /// Enable/disable DRM screen protection (screenshot/recording prevention).
   final bool enableScreenProtection;
 
@@ -61,6 +70,9 @@ class PdfViewerFeatureConfig {
     this.enableDarkModeToggle = true,
     this.enableFullscreen = true,
     this.enablePageSlider = true,
+    this.enableZoomControls = true,
+    this.enableFitControls = true,
+    this.enableRotation = true,
     this.enableScreenProtection = true,
     this.enableKeepScreenOn = true,
     this.enableSessionTracking = true,
@@ -84,6 +96,9 @@ class PdfViewerFeatureConfig {
     enableDarkModeToggle: false,
     enableFullscreen: false,
     enablePageSlider: false,
+    enableZoomControls: false,
+    enableFitControls: false,
+    enableRotation: false,
     enableScreenProtection: false,
     enableKeepScreenOn: false,
     enableSessionTracking: false,
@@ -104,6 +119,9 @@ class PdfViewerFeatureConfig {
     enableDarkModeToggle: true,
     enableFullscreen: true,
     enablePageSlider: true,
+    enableZoomControls: true,
+    enableFitControls: true,
+    enableRotation: true,
     enableScreenProtection: false,
     enableKeepScreenOn: true,
     enableSessionTracking: false,
