@@ -27,7 +27,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pdfrx: ^1.0.91
+  pdfrx:
+    path: third_party/pdfrx
   screen_protector: ^1.4.10
   path_provider: ^2.1.5
   http: ^1.5.0

@@ -96,8 +96,24 @@ class PdfSearchOverlay extends StatelessWidget {
                     ],
                   ),
                 ),
-              // Show "No results" message when search is done but no results
+              if (controller.isSearching.value)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Searching…'),
+                    ],
+                  ),
+                ),
+              // Only report no matches after text extraction has completed.
               if (controller.searchQuery.isNotEmpty &&
+                  !controller.isSearching.value &&
                   controller.searchResults.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -196,6 +212,7 @@ class _SearchTextFieldState extends State<_SearchTextField> {
               ? IconButton(
                   icon: Icon(Icons.clear, color: hintColor, size: 20),
                   onPressed: () {
+                    _debounceTimer?.cancel();
                     _textController.clear();
                     widget.onSearch('');
                     setState(() {});

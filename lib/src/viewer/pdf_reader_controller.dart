@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/reactive.dart';
 import '../core/storage.dart';
+import '../core/platform_utils.dart';
+import '../core/pdf_web_loader.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:path_provider/path_provider.dart';
@@ -55,7 +58,7 @@ class PdfReaderController extends PluginController {
   PdfTextSearcher? pdfTextSearcher;
   String? _resolvedFilePath;
 
-  /// The local file path of the PDF (after download if needed)
+  /// The native local path (after download if needed). Always null on web.
   final localFilePath = Rx<String?>(null);
 
   // Loading State
@@ -76,8 +79,11 @@ class PdfReaderController extends PluginController {
   final keepScreenOn = false.obs;
   final isSearchMode = false.obs;
   final searchQuery = ''.obs;
+  final isSearching = false.obs;
   final searchResults = <PdfTextMatch>[].obs;
   final currentSearchIndex = 0.obs;
+  String? _pendingSearchQuery;
+  int _searchPositionRevision = 0;
 
   // Reading State
   final currentPage = 1.obs;
@@ -163,9 +169,9 @@ class PdfReaderController extends PluginController {
 
   Future<void> _enableScreenProtector() async {
     try {
-      if (Platform.isAndroid) {
+      if (ViewerPlatform.isAndroid) {
         await ScreenProtector.protectDataLeakageOn();
-      } else if (Platform.isIOS) {
+      } else if (ViewerPlatform.isIOS) {
         await ScreenProtector.preventScreenshotOn();
         await ScreenProtector.protectDataLeakageWithBlur();
       }
@@ -176,9 +182,9 @@ class PdfReaderController extends PluginController {
 
   Future<void> _disableScreenProtector() async {
     try {
-      if (Platform.isAndroid) {
+      if (ViewerPlatform.isAndroid) {
         await ScreenProtector.protectDataLeakageOff();
-      } else if (Platform.isIOS) {
+      } else if (ViewerPlatform.isIOS) {
         await ScreenProtector.preventScreenshotOff();
         await ScreenProtector.protectDataLeakageWithBlurOff();
       }
@@ -240,6 +246,7 @@ class PdfReaderController extends PluginController {
   /// The searcher caches page text, paints every match, and navigates to the
   /// exact matching bounds instead of merely jumping to a page.
   void _resetPdfViewerController() {
+    ++_searchPositionRevision;
     final previousController = pdfViewerController;
     final previousTransformListener = _pdfViewerTransformListener;
     if (previousController != null && previousTransformListener != null) {
@@ -260,28 +267,35 @@ class PdfReaderController extends PluginController {
     final searcher = PdfTextSearcher(viewerController);
     pdfTextSearcher = searcher;
     _pdfTextSearchListener = searcher.addListener(_syncPdfSearchState);
+    if (isSearchMode.value && searchQuery.value.isNotEmpty) {
+      _pendingSearchQuery = searchQuery.value;
+      isSearching.value = true;
+    }
   }
 
   void _syncPdfSearchState() {
     final searcher = pdfTextSearcher;
     if (searcher == null) return;
+    final hadMatches = searchResults.isNotEmpty;
 
-    searchResults
-      ..clear()
-      ..addAll(
-        searcher.matches.map(
+    final matches = searcher.matches
+        .map(
           (match) => PdfTextMatch(
             pageNumber: match.pageNumber,
             startIndex: match.start,
             endIndex: match.end,
             text: match.fragments.map((fragment) => fragment.text).join(),
           ),
-        ),
-      );
-
-    final currentIndex = searcher.currentIndex;
-    if (currentIndex != null && currentIndex >= 0) {
-      currentSearchIndex.value = currentIndex;
+        )
+        .toList();
+    currentSearchIndex.value = matches.isEmpty
+        ? 0
+        : (searcher.currentIndex ?? currentSearchIndex.value)
+            .clamp(0, matches.length - 1);
+    searchResults.value = matches;
+    isSearching.value = _pendingSearchQuery != null || searcher.isSearching;
+    if (!hadMatches && matches.isNotEmpty && isSearchMode.value) {
+      unawaited(goToSearchResult(0));
     }
   }
 
@@ -290,7 +304,20 @@ class PdfReaderController extends PluginController {
       final isUrl = _resolvedFilePath!.startsWith('http://') ||
           _resolvedFilePath!.startsWith('https://');
 
-      if (isUrl) {
+      if (kIsWeb) {
+        // Keep protected bytes in memory; never enter the native disk cache.
+        localFilePath.value = null;
+        pdfDocument = await loadWebPdfDocument(
+          _resolvedFilePath!,
+          headers: serviceConfig.httpHeaders,
+          onProgress: (received, total) {
+            downloadedBytes.value = received;
+            totalBytes.value = total;
+            loadingProgress.value = total > 0 ? received / total : 0;
+          },
+        );
+        loadingProgress.value = 1.0;
+      } else if (isUrl) {
         if (serviceConfig.httpHeaders != null &&
             serviceConfig.httpHeaders!.isNotEmpty) {
           debugPrint('Downloading PDF with custom headers...');
@@ -775,6 +802,9 @@ class PdfReaderController extends PluginController {
   }
 
   void exitSearchMode() {
+    ++_searchPositionRevision;
+    _pendingSearchQuery = null;
+    isSearching.value = false;
     isSearchMode.value = false;
     searchQuery.value = '';
     pdfTextSearcher?.resetTextSearch();
@@ -784,7 +814,8 @@ class PdfReaderController extends PluginController {
   }
 
   Future<void> performSearch(String query) async {
-    if (!featureConfig.enableSearch || pdfTextSearcher == null) {
+    ++_searchPositionRevision;
+    if (!featureConfig.enableSearch) {
       searchResults.clear();
       return;
     }
@@ -795,24 +826,71 @@ class PdfReaderController extends PluginController {
     currentSearchIndex.value = 0;
 
     if (normalizedQuery.isEmpty) {
-      pdfTextSearcher!.resetTextSearch();
+      _pendingSearchQuery = null;
+      isSearching.value = false;
+      pdfTextSearcher?.resetTextSearch();
       return;
     }
 
-    pdfTextSearcher!.startTextSearch(
-      normalizedQuery,
+    _pendingSearchQuery = normalizedQuery;
+    isSearching.value = true;
+    _startPendingSearch();
+  }
+
+  void _startPendingSearch() {
+    final query = _pendingSearchQuery;
+    final searcher = pdfTextSearcher;
+    if (isDisposed || query == null || searcher?.controller == null) return;
+    _pendingSearchQuery = null;
+    // A query submitted before attachment must be retried, even if pdfrx had
+    // already recorded the same pattern while its controller was detached.
+    searcher!.resetTextSearch();
+    isSearching.value = true;
+    searcher.startTextSearch(
+      query,
       caseInsensitive: true,
-      goToFirstMatch: true,
+      // Results alter the header/minimap dimensions. Navigate only after the
+      // new viewport is laid out, not inside pdfrx's extraction callback.
+      goToFirstMatch: false,
       searchImmediately: true,
     );
   }
 
-  void goToNextSearchResult() {
-    pdfTextSearcher?.goToNextMatch();
-  }
+  Future<void> goToNextSearchResult() =>
+      goToSearchResult(currentSearchIndex.value + 1);
 
-  void goToPreviousSearchResult() {
-    pdfTextSearcher?.goToPrevMatch();
+  Future<void> goToPreviousSearchResult() =>
+      goToSearchResult(currentSearchIndex.value - 1);
+
+  Future<void> goToSearchResult(int index) => _positionSearchResult(index);
+
+  Future<void> _positionSearchResult(int index, {bool fitViewport = false}) async {
+    final searcher = pdfTextSearcher;
+    if (searcher?.controller == null || searchResults.isEmpty) return;
+    final viewer = pdfViewerController!;
+    final target = index.clamp(0, searchResults.length - 1);
+    currentSearchIndex.value = target;
+    final revision = ++_searchPositionRevision;
+    final session = searcher!.searchSession;
+    bool isActive() =>
+        !isDisposed &&
+        isSearchMode.value &&
+        revision == _searchPositionRevision &&
+        identical(searcher, pdfTextSearcher) &&
+        session == searcher.searchSession &&
+        identical(viewer, pdfViewerController) &&
+        viewer.isReady;
+
+    await WidgetsBinding.instance.endOfFrame;
+    if (!isActive()) return;
+    // pdfrx recenters the old page on resize; restore the selected text only
+    // after our fit operation, otherwise that later animation hides the match.
+    if (fitViewport && fitMode.value != PdfFitMode.custom) {
+      await applyFitMode(fitMode.value);
+      if (!isActive()) return;
+    }
+    await searcher.goToMatchOfIndex(target);
+    if (isActive()) _syncPdfSearchState();
   }
 
   void toggleAutoScroll() {
@@ -902,10 +980,38 @@ class PdfReaderController extends PluginController {
   }
 
   void onViewerReady(PdfViewerController controller) {
+    if (isDisposed ||
+        !identical(controller, pdfViewerController) ||
+        !controller.isReady) {
+      return;
+    }
     zoomLevel.value = controller.currentZoom;
+    _startPendingSearch();
+    onViewerViewSizeChanged(controller);
+  }
+
+  void onViewerViewSizeChanged(PdfViewerController controller) {
+    if (isDisposed ||
+        !identical(controller, pdfViewerController) ||
+        !controller.isReady) {
+      return;
+    }
+    if (isSearchMode.value && searchResults.isNotEmpty) {
+      unawaited(_positionSearchResult(
+        currentSearchIndex.value,
+        fitViewport: true,
+      ));
+      return;
+    }
     final mode = fitMode.value;
     if (mode != PdfFitMode.custom) {
-      Future.microtask(() => applyFitMode(mode));
+      Future.microtask(() {
+        if (!isDisposed &&
+            identical(controller, pdfViewerController) &&
+            controller.isReady) {
+          unawaited(applyFitMode(mode));
+        }
+      });
     }
   }
 
@@ -913,7 +1019,8 @@ class PdfReaderController extends PluginController {
     final controller = pdfViewerController;
     fitMode.value = mode;
     savePreferences();
-    if (controller == null ||
+    if (isDisposed ||
+        controller == null ||
         !controller.isReady ||
         mode == PdfFitMode.custom) {
       return;
@@ -937,7 +1044,11 @@ class PdfReaderController extends PluginController {
       PdfFitMode.custom => null,
     };
     await controller.goTo(destination);
-    zoomLevel.value = controller.currentZoom;
+    if (!isDisposed &&
+        identical(controller, pdfViewerController) &&
+        controller.isReady) {
+      zoomLevel.value = controller.currentZoom;
+    }
   }
 
   void rotateClockwise() {

@@ -1,0 +1,16 @@
+# Local Flutter and native build state; keep package sources and lockfiles.
+.DS_Store
+**/.dart_tool/
+**/build/
+**/.gradle/
+**/.cxx/
+**/.lib/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/local.properties
+**/key.properties
+**/*.jks
+**/*.keystore
+**/app.*.symbols
+**/app.*.map.json

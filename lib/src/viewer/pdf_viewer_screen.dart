@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +12,7 @@ import 'pdf_settings_sheet.dart';
 import 'pdf_bookmarks_sheet.dart';
 import 'pdf_thumbnails_drawer.dart';
 import 'pdf_search_overlay.dart';
+import 'pdf_go_to_page_dialog.dart';
 import 'reader_selection_guard.dart';
 import '../annotations/annotation_toolbar.dart';
 import '../annotations/annotation_canvas.dart';
@@ -84,14 +85,14 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   }
 
   Future<void> _setupDrm() async {
-    if (widget.enableDrm) {
+    if (!kIsWeb && widget.enableDrm) {
       await ScreenProtector.preventScreenshotOn();
       await ScreenProtector.protectDataLeakageOn();
     }
   }
 
   Future<void> _teardownDrm() async {
-    if (widget.enableDrm) {
+    if (!kIsWeb && widget.enableDrm) {
       await ScreenProtector.preventScreenshotOff();
       await ScreenProtector.protectDataLeakageOff();
     }
@@ -130,7 +131,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       final isSearchMode = _controller.isSearchMode.value;
 
       // Only apply Android status-bar styling; iOS manages it via Info.plist / NavigationBar
-      if (!Platform.isIOS) {
+      if (!kIsWeb && !ViewerPlatform.isIOS) {
         SystemChrome.setSystemUIOverlayStyle(
           SystemUiOverlayStyle(
             statusBarColor: statusBarColor,
@@ -202,28 +203,44 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                           _controller.clearPageAnnotations(
                                               _controller.currentPage.value),
                                     )),
+                              // Reserve real space for search controls so pdfrx
+                              // measures only the unobscured PDF viewport.
+                              if (isSearchMode)
+                                PdfSearchOverlay(
+                                  controller: _controller,
+                                  onClose: _controller.exitSearchMode,
+                                ),
                               // PDF Viewer (expanded to fill remaining space)
                               Expanded(
+                                key: const ValueKey('pdf-reader-content'),
                                 child: Stack(
                                   children: [
-                                    // PDF viewer - use Row layout when search mode is active
-                                    if (isSearchMode &&
-                                        _controller.searchResults.isNotEmpty)
-                                      Row(
-                                        children: [
-                                          // PDF takes remaining space (minus minimap width)
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onSecondaryTap: () {},
-                                              child: _buildPdfViewer(isDark),
-                                            ),
+                                    // Keep the viewer in the same subtree as
+                                    // controls/search results appear or vanish.
+                                    Row(
+                                      children: [
+                                        // PDF takes remaining space (minus minimap width)
+                                        Expanded(
+                                          child: GestureDetector(
+                                            onTap: isSearchMode
+                                                ? null
+                                                : _controller.toggleControls,
+                                            onDoubleTap: isSearchMode
+                                                ? null
+                                                : () => _controller
+                                                    .toggleFullscreen(),
+                                            onSecondaryTap: () {},
+                                            child: _buildPdfViewer(isDark),
                                           ),
-                                          // Minimap on the right
+                                        ),
+                                        // Minimap on the right
+                                        if (isSearchMode &&
+                                            _controller.searchResults.isNotEmpty)
                                           SizedBox(
                                             width: 48,
                                             child: Padding(
                                               padding: const EdgeInsets.only(
-                                                  top: 120,
+                                                  top: 8,
                                                   bottom: 8,
                                                   right: 8,
                                                   left: 4),
@@ -231,32 +248,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                                                   _buildSearchMinimap(isDark),
                                             ),
                                           ),
-                                        ],
-                                      )
-                                    else
-                                      GestureDetector(
-                                        onTap: isSearchMode
-                                            ? null
-                                            : _controller.toggleControls,
-                                        onDoubleTap: isSearchMode
-                                            ? null
-                                            : () =>
-                                                _controller.toggleFullscreen(),
-                                        onSecondaryTap: () {},
-                                        child: _buildPdfViewer(isDark),
-                                      ),
-                                    // Search mode overlay - only shows top bar
-                                    if (isSearchMode)
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: PdfSearchOverlay(
-                                          controller: _controller,
-                                          onClose: () =>
-                                              _controller.exitSearchMode(),
-                                        ),
-                                      ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -367,7 +360,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
               final resultIndex =
                   searchResults.indexWhere((r) => r.pageNumber == page);
               if (resultIndex != -1) {
-                _controller.currentSearchIndex.value = resultIndex;
+                _controller.goToSearchResult(resultIndex);
+                return;
               }
             }
             _controller.goToPage(page);
@@ -419,6 +413,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
 
                 // Check if this page contains the current search result
                 final isCurrentResultPage = searchResults.isNotEmpty &&
+                    currentSearchIndex < searchResults.length &&
                     searchResults[currentSearchIndex].pageNumber == page;
 
                 markers.add(
@@ -643,9 +638,14 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
       quarterTurns: _controller.rotationQuarterTurns.value,
       child: Container(
         color: bgColor,
-        child: isLocalPath
-            ? PdfViewer.file(
-                effectiveFilePath,
+        child: kIsWeb || isLocalPath
+            ? PdfViewer(
+                // Reuse authenticated web bytes, including on layout changes.
+                // The controller owns the document and disposes it on close.
+                kIsWeb
+                    ? PdfDocumentRefDirect(_controller.pdfDocument!,
+                        autoDispose: false)
+                    : PdfDocumentRefFile(effectiveFilePath!),
                 // Use key to force rebuild when scroll direction changes
                 key: ValueKey('pdf_file_${scrollDirection.name}'),
                 controller: _controller.pdfViewerController,
@@ -659,12 +659,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                       _controller.onViewerInteractionUpdate(details.scale),
                   onViewerReady: (_, controller) =>
                       _controller.onViewerReady(controller),
-                  onViewSizeChanged: (_, __, ___) {
-                    final mode = _controller.fitMode.value;
-                    if (mode != PdfFitMode.custom) {
-                      Future.microtask(() => _controller.applyFitMode(mode));
-                    }
-                  },
+                  onViewSizeChanged: (_, __, controller) =>
+                      _controller.onViewerViewSizeChanged(controller),
                   pageAnchor:
                       isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
                   layoutPages: isHorizontal ? _horizontalLayout : null,
@@ -748,12 +744,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
                       _controller.onViewerInteractionUpdate(details.scale),
                   onViewerReady: (_, controller) =>
                       _controller.onViewerReady(controller),
-                  onViewSizeChanged: (_, __, ___) {
-                    final mode = _controller.fitMode.value;
-                    if (mode != PdfFitMode.custom) {
-                      Future.microtask(() => _controller.applyFitMode(mode));
-                    }
-                  },
+                  onViewSizeChanged: (_, __, controller) =>
+                      _controller.onViewerViewSizeChanged(controller),
                   // In horizontal mode, use top anchor for page alignment; in vertical use all
                   pageAnchor:
                       isHorizontal ? PdfPageAnchor.top : PdfPageAnchor.all,
@@ -1164,47 +1156,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen>
   }
 
   void _showGoToPageDialog() {
-    final isDark = _controller.isDarkMode.value;
-    final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final textController = TextEditingController();
-
-    showViewerDialog(
+    showPdfGoToPageDialog(
       context: context,
-      backgroundColor: bgColor,
-      title: 'Go to Page',
-      content: TextField(
-        controller: textController,
-        keyboardType: TextInputType.number,
-        autofocus: true,
-        keyboardAppearance: iosKeyboardBrightness(context),
-        style: TextStyle(color: textColor),
-        decoration: InputDecoration(
-          hintText: 'Enter page number (1-\${_controller.totalPages.value})',
-          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel',
-              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-        ),
-        TextButton(
-          onPressed: () {
-            final page = int.tryParse(textController.text);
-            if (page != null &&
-                page >= 1 &&
-                page <= _controller.totalPages.value) {
-              _controller.goToPage(page);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text('Go',
-              style: TextStyle(color: Theme.of(context).primaryColor)),
-        ),
-      ],
+      totalPages: _controller.totalPages.value,
+      isDark: _controller.isDarkMode.value,
+      onGoToPage: _controller.goToPage,
     );
   }
 
@@ -2044,47 +2000,11 @@ class _PdfViewerFromPathState extends State<PdfViewerFromPath>
   }
 
   void _showGoToPageDialog() {
-    final isDark = _controller.isDarkMode.value;
-    final bgColor = isDark ? const Color(0xFF2a2a2a) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final textController = TextEditingController();
-
-    showViewerDialog(
+    showPdfGoToPageDialog(
       context: context,
-      backgroundColor: bgColor,
-      title: 'Go to Page',
-      content: TextField(
-        controller: textController,
-        keyboardType: TextInputType.number,
-        autofocus: true,
-        keyboardAppearance: iosKeyboardBrightness(context),
-        style: TextStyle(color: textColor),
-        decoration: InputDecoration(
-          hintText: 'Enter page number (1-\${_controller.totalPages.value})',
-          hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel',
-              style: TextStyle(color: textColor.withValues(alpha: 0.6))),
-        ),
-        TextButton(
-          onPressed: () {
-            final page = int.tryParse(textController.text);
-            if (page != null &&
-                page >= 1 &&
-                page <= _controller.totalPages.value) {
-              _controller.goToPage(page);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text('Go',
-              style: TextStyle(color: Theme.of(context).primaryColor)),
-        ),
-      ],
+      totalPages: _controller.totalPages.value,
+      isDark: _controller.isDarkMode.value,
+      onGoToPage: _controller.goToPage,
     );
   }
 }

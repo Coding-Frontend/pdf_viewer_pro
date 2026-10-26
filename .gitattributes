@@ -1,0 +1,6 @@
+# Preserve the reviewed upstream archive byte-for-byte, including its CRLF
+# files and upstream whitespace. Our two-line source patch is documented in
+# NCBH_PATCH.md; avoid a repository-wide third-party formatting rewrite.
+third_party/pdfrx/** -text -whitespace
+third_party/pdfrx/.gitignore text whitespace
+third_party/pdfrx/NCBH_PATCH.md text whitespace

@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
@@ -98,7 +97,7 @@ class PdfThumbnailsDrawer extends StatelessWidget {
         );
       },
     );
-    if (Platform.isIOS) return grid;
+    if (ViewerPlatform.isIOS) return grid;
     return Scrollbar(
       thumbVisibility: true,
       thickness: 6,

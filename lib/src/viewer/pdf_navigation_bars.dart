@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../core/platform_utils.dart';
@@ -47,7 +46,7 @@ class PdfReaderTopBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: Platform.isIOS ? 44.0 : 56.0,
+              height: ViewerPlatform.isIOS ? 44.0 : 56.0,
               child: Row(
                 children: [
                   IconButton(
@@ -187,7 +186,7 @@ class PdfReaderBottomBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Platform.isIOS
+                    child: ViewerPlatform.isIOS
                         ? CupertinoSlider(
                             value: controller.currentPage.value
                                 .toDouble()
